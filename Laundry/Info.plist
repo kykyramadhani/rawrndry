@@ -26,5 +26,9 @@
 		<key>UIColorName</key>
 		<string>Black</string>
 	</dict>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Laundry Day uses the microphone so you can blow on clothes to dry them.</string>
+	<key>UIRequiresFullScreen</key>
+	<true/>
 </dict>
 </plist>
