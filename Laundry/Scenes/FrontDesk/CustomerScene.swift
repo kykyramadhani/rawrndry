@@ -95,7 +95,7 @@ class CustomerScene: SKScene {
         
         let text = currentCustomer?.orderText ?? "WASH PLS."
         
-        let customFont = UIFont(name: AssetName.Font.comica, size: 55) ?? UIFont.systemFont(ofSize: 55, weight: .bold)
+        let customFont = UIFont(name: AssetName.Font.comica, size: 33) ?? UIFont.systemFont(ofSize: 55, weight: .bold)
         
         let attributes: [NSAttributedString.Key: Any] = [
             .font: customFont,
@@ -123,8 +123,8 @@ class CustomerScene: SKScene {
         let bagDrop = SKAction.moveBy(x: 0, y: -20, duration: 0.2)
         let bagSpawn = SKAction.group([bagAppear, bagDrop])
         
-        let popUp = SKAction.scale(to: 0.35, duration: 0.3)
-        let popBounce = SKAction.scale(to: 0.3, duration: 0.1)
+        let popUp = SKAction.scale(to: 0.50, duration: 0.3)
+        let popBounce = SKAction.scale(to: 0.45, duration: 0.1)
         let bubbleAnim = SKAction.sequence([popUp, popBounce])
         
         let customerSequence = SKAction.sequence([
