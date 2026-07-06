@@ -32,6 +32,10 @@ class WashingScene: SKScene {
         setupClothesOnSteps()
         setupSoaps()
         setupRightBasket()
+        
+        // Tukar Audio
+        AudioManager.shared.stopThemeBGM()
+        AudioManager.shared.playRiverAmbience()
     }
     
     private func setupBackground() {
@@ -130,84 +134,88 @@ class WashingScene: SKScene {
     }
     
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard let touch = touches.first else { return }
-        let location = touch.location(in: self)
-        
-        switch currentState {
-        case .draggingDirty:
-            pickedClothes.position = location
+            guard let touch = touches.first else { return }
+            let location = touch.location(in: self)
             
-        case .washing:
-            if let lastTouch = lastTouchLocation, spreadClothes.contains(location) {
-                let distance = hypot(location.x - lastTouch.x, location.y - lastTouch.y)
-                scrubAmount += distance
-                lastTouchLocation = location
+            switch currentState {
+            case .draggingDirty:
+                pickedClothes.position = location
                 
-                let progress = min(1.0, scrubAmount / requiredScrubAmount)
-                dirtStain.alpha = 1.0 - progress
-                
-                if progress >= 1.0 {
-                    currentState = .clean
-                    dirtStain.isHidden = true
+            case .washing:
+                if let lastTouch = lastTouchLocation, spreadClothes.contains(location) {
+                    let distance = hypot(location.x - lastTouch.x, location.y - lastTouch.y)
+                    scrubAmount += distance
+                    lastTouchLocation = location
+                    
+                    let progress = min(1.0, scrubAmount / requiredScrubAmount)
+                    dirtStain.alpha = 1.0 - progress
+                    
+                    AudioManager.shared.playScrubbing()
+                    
+                    if progress >= 1.0 {
+                        currentState = .clean
+                        dirtStain.isHidden = true
+                        
+                        AudioManager.shared.stopScrubbing()
+                    }
                 }
+                
+            case .draggingClean:
+                pickedClothes.position = location
+                spreadClothes.isHidden = true
+                
+            default:
+                break
             }
-            
-        case .draggingClean:
-            pickedClothes.position = location
-            spreadClothes.isHidden = true
-            pickedClothes.position = location
-            
-        default:
-            break
-        }
-    }
-    
-    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
-        switch currentState {
-        case .draggingDirty:
-            let rockArea = CGRect(x: -self.size.width * 0.15, y: -self.size.height * 0.15,
-                                  width: self.size.width * 0.3, height: self.size.height * 0.3)
-            
-            if rockArea.contains(pickedClothes.position) {
-                currentState = .washing
-                pickedClothes.isHidden = true
-                
-                spreadClothes.isHidden = false
-                dirtStain.isHidden = false
-                dirtStain.alpha = 1.0
-                scrubAmount = 0.0
-            } else {
-                pickedClothes.isHidden = true
-                currentState = .idle
-            }
-            
-        case .washing:
-            lastTouchLocation = nil
-            
-        case .draggingClean:
-            if rightBasket.contains(pickedClothes.position) {
-                pickedClothes.isHidden = true
-                currentState = .idle
-                
-                spreadClothes.position = CGPoint(x: self.size.width * spreadClothesPosition.x,
-                                                 y: self.size.height * spreadClothesPosition.y)
-                spreadClothes.zPosition = 4
-                
-                print("Cucian selesai 1 baju!")
-            } else {
-                pickedClothes.isHidden = true
-                spreadClothes.isHidden = false
-                
-                spreadClothes.position = CGPoint(x: self.size.width * spreadClothesPosition.x,
-                                                 y: self.size.height * spreadClothesPosition.y)
-                spreadClothes.zPosition = 4
-                currentState = .clean
-            }
-            
-        default:
-            break
         }
         
-        lastTouchLocation = nil
-    }
+        override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+            AudioManager.shared.stopScrubbing()
+            
+            switch currentState {
+            case .draggingDirty:
+                let rockArea = CGRect(x: -self.size.width * 0.15, y: -self.size.height * 0.15,
+                                      width: self.size.width * 0.3, height: self.size.height * 0.3)
+                
+                if rockArea.contains(pickedClothes.position) {
+                    currentState = .washing
+                    pickedClothes.isHidden = true
+                    
+                    spreadClothes.isHidden = false
+                    dirtStain.isHidden = false
+                    dirtStain.alpha = 1.0
+                    scrubAmount = 0.0
+                } else {
+                    pickedClothes.isHidden = true
+                    currentState = .idle
+                }
+                
+            case .washing:
+                lastTouchLocation = nil
+                
+            case .draggingClean:
+                if rightBasket.contains(pickedClothes.position) {
+                    pickedClothes.isHidden = true
+                    currentState = .idle
+                    
+                    spreadClothes.position = CGPoint(x: self.size.width * spreadClothesPosition.x,
+                                                     y: self.size.height * spreadClothesPosition.y)
+                    spreadClothes.zPosition = 4
+                    
+                } else {
+                    pickedClothes.isHidden = true
+                    spreadClothes.isHidden = false
+                    
+                    spreadClothes.position = CGPoint(x: self.size.width * spreadClothesPosition.x,
+                                                     y: self.size.height * spreadClothesPosition.y)
+                    spreadClothes.zPosition = 4
+                    currentState = .clean
+                }
+                
+            default:
+                break
+            }
+            
+            lastTouchLocation = nil
+        }
 }

@@ -2,11 +2,13 @@ import SpriteKit
 
 class CustomerScene: SKScene {
     
+    // Core Nodes
     private var customerNode: SKSpriteNode!
     private var laundryBag: SKSpriteNode!
     private var bubbleContainer: SKNode!
     private var bubbleBg: SKSpriteNode!
     
+    // UI Nodes
     private var chevronBtn: SKSpriteNode!
     private var dayHud: SKSpriteNode!
     private var currencyHud: SKSpriteNode!
@@ -18,6 +20,7 @@ class CustomerScene: SKScene {
     private let finalBagPosition = CGPoint(x: 0.32, y: -0.18)
     
     private let plainTextColor = UIColor(red: 255.0/255.0, green: 247.0/255.0, blue: 234.0/255.0, alpha: 1.0)
+    private let plainTextBrown = UIColor(red: 143.0/255.0, green: 43.0/255.0, blue: 18.0/255.0, alpha: 1.0)
     
     override func didMove(to view: SKView) {
         self.anchorPoint = CGPoint(x: 0.5, y: 0.5)
@@ -37,6 +40,9 @@ class CustomerScene: SKScene {
         setupSpeechBubble()
         
         animateArrival()
+        
+        AudioManager.shared.stopRiverAmbience()
+        AudioManager.shared.playThemeBGM()
     }
     
     private func setupBackground() {
@@ -47,11 +53,13 @@ class CustomerScene: SKScene {
         addChild(background)
     }
     
+    // MARK: - Setup UI Elements
     private func setupUI() {
         let topY = self.size.height * 0.40
         var currentX = -self.size.width * 0.45
         let horizontalSpacing: CGFloat = 15
         
+        // --- 1. Day Indicator ---
         dayHud = SKSpriteNode(imageNamed: AssetName.UI.hudIndicator)
         dayHud.position = CGPoint(x: currentX + dayHud.size.width / 2, y: topY)
         dayHud.zPosition = 100
@@ -60,7 +68,7 @@ class CustomerScene: SKScene {
         let dayContent = SKNode()
         let sunIcon = SKSpriteNode(imageNamed: AssetName.UI.sunIcon)
         sunIcon.position = CGPoint.zero
-        
+
         let dayLabel = SKLabelNode(fontNamed: AssetName.Font.comica)
         dayLabel.text = "DAY \(DayManager.shared.currentDay)"
         dayLabel.fontSize = 24
@@ -79,6 +87,7 @@ class CustomerScene: SKScene {
         
         currentX += dayHud.size.width + horizontalSpacing
         
+        // --- 2. Currency Indicator ---
         currencyHud = SKSpriteNode(imageNamed: AssetName.UI.hudIndicator)
         currencyHud.position = CGPoint(x: currentX + currencyHud.size.width / 2, y: topY)
         currencyHud.zPosition = 100
@@ -104,12 +113,14 @@ class CustomerScene: SKScene {
         currencyContent.zPosition = 101
         currencyHud.addChild(currencyContent)
         
+        // --- 3. Instruction Button ---
         instructionBtn = SKSpriteNode(imageNamed: AssetName.UI.btnInstruction)
         instructionBtn.setScale(0.8)
         instructionBtn.position = CGPoint(x: self.size.width * 0.43, y: topY)
         instructionBtn.zPosition = 100
         addChild(instructionBtn)
         
+        // --- 4. Chevron Button ---
         chevronBtn = SKSpriteNode(imageNamed: AssetName.UI.chevronRight)
         chevronBtn.setScale(0.8)
         chevronBtn.position = CGPoint(x: self.size.width * 0.43, y: 0)
@@ -174,7 +185,7 @@ class CustomerScene: SKScene {
     
     private func setupSpeechBubble() {
         bubbleContainer = SKNode()
-        bubbleContainer.position = CGPoint(x: 248, y: 85)
+        bubbleContainer.position = CGPoint(x: 100, y: 45)
         bubbleContainer.zPosition = 30
         bubbleContainer.setScale(0)
         
@@ -188,7 +199,7 @@ class CustomerScene: SKScene {
         let textLabel = SKLabelNode(fontNamed: AssetName.Font.comica)
         textLabel.text = text.uppercased()
         textLabel.fontSize = 32
-        textLabel.fontColor = plainTextColor
+        textLabel.fontColor = plainTextBrown
         textLabel.verticalAlignmentMode = .center
         textLabel.horizontalAlignmentMode = .center
         textLabel.position = CGPoint.zero

@@ -7,6 +7,9 @@ class StartScene: SKScene {
         
         setupBackground()
         setupStartButton()
+        
+        AudioManager.shared.stopRiverAmbience()
+        AudioManager.shared.playThemeBGM()
     }
     
     private func setupBackground() {
