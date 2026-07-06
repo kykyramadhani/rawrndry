@@ -4,19 +4,26 @@
 //
 //  Created by Aulia Agus on 01/07/26.
 //
-//  Drag wet items from the basket onto the line, then blow into the mic to dry
-//  everything currently hung. Once hung, an item stays on the line (isHungToDry
-//  persists in GameState); only dryness still changes as the player blows.
+//  Drag wet items from the basket onto the rope (or back), then blow into the mic
+//  to dry whatever's hung. Blow too hard and hung items fall to the floor and have
+//  to be re-hung from scratch.
 
 import SpriteKit
 import AVFoundation
 
 class DryingScene: SKScene {
 
-    private var itemNodes: [SKSpriteNode] = []
-    private var wetOverlays: [SKSpriteNode] = []
+    private enum DragOrigin {
+        case basket
+        case rope
+    }
 
-    private var draggingIndex: Int?
+    private var itemNodes: [SKSpriteNode?] = []
+    private var dragState: (index: Int, origin: DragOrigin)?
+
+    private var basketNode: SKSpriteNode!
+    private var basketPiles: SKSpriteNode!
+    private var pickedClothes: SKSpriteNode!
 
     private var helpButton: SKSpriteNode!
     private var hintLabel: SKLabelNode!
@@ -32,19 +39,21 @@ class DryingScene: SKScene {
     private let blowBarWidth: CGFloat = 200
     private let blowBarHeight: CGFloat = 18
 
-    private var lineY: CGFloat { size.height * 0.78 }
-    private var basketPosition: CGPoint { CGPoint(x: size.width * 0.12, y: size.height * 0.24) }
-    private var rackZone: CGRect { CGRect(x: size.width * 0.15, y: lineY - 60, width: size.width * 0.7, height: 90) }
+    private var ropeY: CGFloat { size.height * 0.78 }
+    private var basketPosition: CGPoint { CGPoint(x: size.width * 0.15, y: size.height * 0.24) }
+    private var rackZone: CGRect { CGRect(x: size.width * 0.15, y: ropeY - 60, width: size.width * 0.7, height: 90) }
+    private var basketZone: CGRect { CGRect(x: basketPosition.x - 60, y: basketPosition.y - 50, width: 120, height: 110) }
 
     override func didMove(to view: SKView) {
-        addBackground(imageNamed: "bg-clothesline")
+        addBackground(imageNamed: "dryingBackground")
         addDayLabel(day: GameState.shared.currentDay)
         addStationArrows(current: .drying)
 
-        addClothesline()
-        addBasketVisual(at: basketPosition)
+        addRope()
+        addBasketVisual()
         addBlowBar()
         addStatusLabel()
+        setupPickedClothesNode()
         setupItems()
 
         helpButton = makeButton(
@@ -65,80 +74,85 @@ class DryingScene: SKScene {
 
     // MARK: - Setup
 
-    private func addClothesline() {
-        let line = SKSpriteNode(imageNamed: "clothesline")
-        line.size = CGSize(width: size.width * 0.75, height: 8)
-        line.position = CGPoint(x: size.width * 0.55, y: lineY)
-        line.zPosition = 3
-        addChild(line)
+    private func addRope() {
+        let rope = SKSpriteNode(imageNamed: "dryingRope")
+        rope.size = CGSize(width: size.width * 0.75, height: 8)
+        rope.position = CGPoint(x: size.width * 0.55, y: ropeY)
+        rope.zPosition = 3
+        addChild(rope)
     }
 
-    private func addBasketVisual(at position: CGPoint) {
-        let basket = SKSpriteNode(imageNamed: "basket")
-        basket.size = CGSize(width: 100, height: 78)
-        basket.position = position
-        basket.zPosition = 2
-        addChild(basket)
+    private func addBasketVisual() {
+        basketNode = SKSpriteNode(imageNamed: "dryingBasket")
+        basketNode.size = CGSize(width: 100, height: 78)
+        basketNode.position = basketPosition
+        basketNode.zPosition = 2
+        addChild(basketNode)
+
+        basketPiles = SKSpriteNode(imageNamed: "dryingBasketPiles")
+        basketPiles.size = CGSize(width: 80, height: 46)
+        basketPiles.position = CGPoint(x: basketPosition.x, y: basketPosition.y + 18)
+        basketPiles.zPosition = 3
+        addChild(basketPiles)
+    }
+
+    private func setupPickedClothesNode() {
+        pickedClothes = SKSpriteNode(imageNamed: "washingPickedClothes1")
+        pickedClothes.size = itemSize
+        pickedClothes.zPosition = 30
+        pickedClothes.isHidden = true
+        addChild(pickedClothes)
     }
 
     private func setupItems() {
-        let types = GameState.shared.clothesTypes
-        itemNodes = []
-        wetOverlays = []
+        itemNodes = Array(repeating: nil, count: GameState.shared.clothesTypes.count)
 
         var hungCount = 0
-        var basketCount = 0
-
-        for (index, type) in types.enumerated() {
-            let node = SKSpriteNode(imageNamed: type.imageName)
-            node.size = itemSize
-            node.name = "item-\(index)"
-            node.zPosition = 5
-            addChild(node)
-
-            let overlay = SKSpriteNode(color: .systemBlue, size: node.size)
-            overlay.alpha = 1 - GameState.shared.itemProgress[index].dryProgress
-            overlay.zPosition = 1
-            node.addChild(overlay)
-
-            if GameState.shared.itemProgress[index].isHungToDry {
-                node.position = rackSlotPosition(slot: hungCount)
-                hungCount += 1
-                addPeg(at: node.position.x)
-            } else {
-                node.position = basketSlotPosition(slot: basketCount)
-                basketCount += 1
-            }
-
-            itemNodes.append(node)
-            wetOverlays.append(overlay)
+        for index in GameState.shared.itemProgress.indices where GameState.shared.itemProgress[index].isHungToDry {
+            hangItem(index: index, slot: hungCount)
+            hungCount += 1
         }
+
+        updateBasketPilesVisibility()
     }
 
-    private func addPeg(at x: CGFloat) {
-        let peg = SKSpriteNode(imageNamed: "clothespeg")
-        peg.size = CGSize(width: 14, height: 20)
-        peg.position = CGPoint(x: x, y: lineY)
-        peg.zPosition = 4
-        addChild(peg)
+    private func makeHungItemNode(index: Int) -> SKSpriteNode {
+        let node = SKSpriteNode(imageNamed: "dryingClothesHanged")
+        node.size = itemSize
+        node.name = "item-\(index)"
+        node.zPosition = 5
+        return node
+    }
+
+    private func hangItem(index: Int, slot: Int) {
+        let node = makeHungItemNode(index: index)
+        node.position = rackSlotPosition(slot: slot)
+        addChild(node)
+        itemNodes[index] = node
     }
 
     private func rackSlotPosition(slot: Int) -> CGPoint {
         let spacing: CGFloat = 80
         let startX = size.width * 0.55 - spacing * 1.5
-        return CGPoint(x: startX + CGFloat(slot) * spacing, y: lineY - 55)
+        return CGPoint(x: startX + CGFloat(slot) * spacing, y: ropeY - 55)
     }
 
-    private func basketSlotPosition(slot: Int) -> CGPoint {
-        CGPoint(x: basketPosition.x + CGFloat(slot % 2) * 24 - 12, y: basketPosition.y + CGFloat(slot / 2) * 26)
+    private func floorSlotPosition(slot: Int) -> CGPoint {
+        let spacing: CGFloat = 80
+        let startX = size.width * 0.55 - spacing * 1.5
+        return CGPoint(x: startX + CGFloat(slot) * spacing, y: size.height * 0.1)
     }
 
     private func countHungItems(excluding: Int?) -> Int {
         GameState.shared.itemProgress.indices.filter { $0 != excluding && GameState.shared.itemProgress[$0].isHungToDry }.count
     }
 
-    private func countBasketItems(excluding: Int?) -> Int {
-        GameState.shared.itemProgress.indices.filter { $0 != excluding && !GameState.shared.itemProgress[$0].isHungToDry }.count
+    private func countBasketItems() -> Int {
+        GameState.shared.itemProgress.indices.filter { !GameState.shared.itemProgress[$0].isHungToDry }.count
+    }
+
+    private func updateBasketPilesVisibility() {
+        basketPiles.isHidden = countBasketItems() == 0
     }
 
     private func addBlowBar() {
@@ -254,35 +268,41 @@ class DryingScene: SKScene {
     // MARK: - Blow handling
 
     private func handleValidBlow(power: Float) {
-        var driedAny = false
+        let dryingIndices = GameState.shared.itemProgress.indices.filter {
+            GameState.shared.itemProgress[$0].isHungToDry && GameState.shared.itemProgress[$0].dryProgress < 1
+        }
+        guard !dryingIndices.isEmpty else { return }
 
-        for index in GameState.shared.itemProgress.indices where GameState.shared.itemProgress[index].isHungToDry {
-            guard GameState.shared.itemProgress[index].dryProgress < 1 else { continue }
+        for index in dryingIndices {
             GameState.shared.itemProgress[index].dryProgress = min(1, GameState.shared.itemProgress[index].dryProgress + 0.12)
-            wetOverlays[index].alpha = 1 - GameState.shared.itemProgress[index].dryProgress
-            driedAny = true
-
-            if GameState.shared.itemProgress[index].dryProgress >= 1 {
-                showHint("✨ Dry!", on: hintLabel)
-            }
         }
 
-        guard driedAny else { return }
-
         playSound("sfx-blow")
-        swayHungClothes()
+        swayAndFlash(indices: dryingIndices)
         updateBlowBar(power: power)
+
+        if GameState.shared.isFullyDried {
+            showStatus("All dry!")
+            playSound("sfx-success")
+            run(.sequence([.wait(forDuration: 1.5), .run { [weak self] in self?.hideStatus() }]))
+        }
     }
 
-    private func swayHungClothes() {
+    private func swayAndFlash(indices: [Int]) {
         let degreesToRadians: (CGFloat) -> CGFloat = { $0 * .pi / 180 }
         let sway = SKAction.sequence([
             .rotate(toAngle: degreesToRadians(5), duration: 0.1, shortestUnitArc: true),
             .rotate(toAngle: degreesToRadians(-5), duration: 0.15, shortestUnitArc: true),
             .rotate(toAngle: 0, duration: 0.1, shortestUnitArc: true)
         ])
-        for index in GameState.shared.itemProgress.indices where GameState.shared.itemProgress[index].isHungToDry {
-            itemNodes[index].run(sway)
+
+        for index in indices {
+            guard let node = itemNodes[index] else { continue }
+            node.texture = SKTexture(imageNamed: "dryingClothesBlowed")
+            node.run(sway) {
+                guard GameState.shared.itemProgress[index].isHungToDry else { return }
+                node.texture = SKTexture(imageNamed: "dryingClothesHanged")
+            }
         }
     }
 
@@ -299,10 +319,15 @@ class DryingScene: SKScene {
         playSound("sfx-fail")
         showStatus("Too strong!")
 
-        let slide = SKAction.moveBy(x: size.width, y: 0, duration: 0.4)
-        slide.timingMode = .easeOut
-        for index in hungIndices {
-            itemNodes[index].run(slide)
+        for (slot, index) in hungIndices.enumerated() {
+            guard let node = itemNodes[index] else { continue }
+            node.texture = SKTexture(imageNamed: "dryingClothesFallen")
+            let fall = SKAction.group([
+                .move(to: floorSlotPosition(slot: slot), duration: 0.35),
+                .rotate(toAngle: CGFloat.random(in: -0.3...0.3), duration: 0.35)
+            ])
+            fall.timingMode = .easeIn
+            node.run(fall)
         }
 
         run(.sequence([
@@ -316,8 +341,12 @@ class DryingScene: SKScene {
 
         for (slot, index) in hungIndices.enumerated() {
             GameState.shared.itemProgress[index].dryProgress = 0
-            wetOverlays[index].alpha = 1
-            itemNodes[index].position = rackSlotPosition(slot: slot)
+            guard let node = itemNodes[index] else { continue }
+            node.texture = SKTexture(imageNamed: "dryingClothesHanged")
+            node.run(.group([
+                .move(to: rackSlotPosition(slot: slot), duration: 0.3),
+                .rotate(toAngle: 0, duration: 0.3)
+            ]))
         }
 
         isTooStrongActive = false
@@ -350,43 +379,83 @@ class DryingScene: SKScene {
 
         if name == "help" {
             runButtonTapAnimation(on: helpButton) {
-                self.showHint("Drag clothes from the basket onto the line, then blow into the mic to dry them!", on: self.hintLabel)
+                self.showHint("Drag clothes from the basket onto the rope, then blow into the mic to dry them!", on: self.hintLabel)
             }
             return
         }
 
+        guard !isTooStrongActive, dragState == nil else { return }
+
         if let name, name.hasPrefix("item-"), let index = Int(name.dropFirst("item-".count)) {
-            guard !GameState.shared.itemProgress[index].isHungToDry else { return }
-            draggingIndex = index
+            beginDrag(index: index, from: .rope, at: location)
+            return
+        }
+
+        if basketPiles.contains(location) || basketNode.contains(location),
+           let index = GameState.shared.itemProgress.firstIndex(where: { !$0.isHungToDry }) {
+            beginDrag(index: index, from: .basket, at: location)
         }
     }
 
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard let index = draggingIndex, let touch = touches.first else { return }
-        itemNodes[index].position = touch.location(in: self)
+        guard dragState != nil, let touch = touches.first else { return }
+        pickedClothes.position = touch.location(in: self)
     }
 
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard let index = draggingIndex else { return }
-        draggingIndex = nil
-        resolveDrop(index: index)
+        guard let drag = dragState else { return }
+        dragState = nil
+        pickedClothes.isHidden = true
+        resolveDrop(index: drag.index, origin: drag.origin, at: pickedClothes.position)
     }
 
     override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
-        draggingIndex = nil
+        guard let drag = dragState else { return }
+        dragState = nil
+        pickedClothes.isHidden = true
+        if drag.origin == .rope {
+            hangItem(index: drag.index, slot: countHungItems(excluding: nil))
+        }
+        updateBasketPilesVisibility()
     }
 
-    private func resolveDrop(index: Int) {
-        let node = itemNodes[index]
+    private func beginDrag(index: Int, from origin: DragOrigin, at location: CGPoint) {
+        dragState = (index, origin)
 
-        if rackZone.contains(node.position) {
-            GameState.shared.itemProgress[index].isHungToDry = true
-            let slot = countHungItems(excluding: index)
-            node.run(.move(to: rackSlotPosition(slot: slot), duration: 0.2))
-            addPeg(at: rackSlotPosition(slot: slot).x)
-        } else {
-            let slot = countBasketItems(excluding: index)
-            node.run(.move(to: basketSlotPosition(slot: slot), duration: 0.2))
+        if origin == .rope {
+            itemNodes[index]?.removeFromParent()
+            itemNodes[index] = nil
+        }
+
+        pickedClothes.position = location
+        pickedClothes.isHidden = false
+        updateBasketPilesVisibility()
+    }
+
+    private func resolveDrop(index: Int, origin: DragOrigin, at position: CGPoint) {
+        switch origin {
+        case .basket:
+            if rackZone.contains(position) {
+                GameState.shared.itemProgress[index].isHungToDry = true
+                hangItem(index: index, slot: countHungItems(excluding: index))
+            }
+        case .rope:
+            if basketZone.contains(position) {
+                GameState.shared.itemProgress[index].isHungToDry = false
+                GameState.shared.itemProgress[index].dryProgress = 0
+            } else {
+                hangItem(index: index, slot: countHungItems(excluding: index))
+            }
+        }
+
+        relayoutHungItems()
+        updateBasketPilesVisibility()
+    }
+
+    private func relayoutHungItems() {
+        let hungIndices = GameState.shared.itemProgress.indices.filter { GameState.shared.itemProgress[$0].isHungToDry }
+        for (slot, index) in hungIndices.enumerated() {
+            itemNodes[index]?.run(.move(to: rackSlotPosition(slot: slot), duration: 0.2))
         }
     }
 }

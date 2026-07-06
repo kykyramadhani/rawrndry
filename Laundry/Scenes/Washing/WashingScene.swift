@@ -32,7 +32,8 @@ class WashingScene: SKScene {
         setupClothesOnSteps()
         setupSoaps()
         setupRightBasket()
-        
+        setupStationArrows()
+
         // Tukar Audio
         AudioManager.shared.stopThemeBGM()
         AudioManager.shared.playRiverAmbience()
@@ -105,11 +106,32 @@ class WashingScene: SKScene {
         rightBasket.zPosition = 10
         addChild(rightBasket)
     }
-    
+
+    /// Positioned in this scene's own centered coordinate space (anchorPoint 0.5, 0.5),
+    /// so the shared `addStationArrows` helper — which assumes a bottom-left origin — can't be used directly.
+    private func setupStationArrows() {
+        makeButton(
+            imageNamed: "arrow-left",
+            position: CGPoint(x: -self.size.width * 0.46, y: 0),
+            scale: 0.02,
+            nodeName: "stationLeft"
+        )
+        makeButton(
+            imageNamed: "arrow-right",
+            position: CGPoint(x: self.size.width * 0.46, y: 0),
+            scale: 0.02,
+            nodeName: "stationRight"
+        )
+    }
+
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let touch = touches.first else { return }
         let location = touch.location(in: self)
-        
+
+        if handleStationArrowTap(nodeName: tappedNodeName(at: location), current: .washing) {
+            return
+        }
+
         switch currentState {
         case .idle:
             if basketPiles.contains(location) {
