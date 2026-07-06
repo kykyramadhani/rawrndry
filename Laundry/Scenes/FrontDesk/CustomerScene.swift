@@ -4,12 +4,20 @@ class CustomerScene: SKScene {
     
     private var customerNode: SKSpriteNode!
     private var laundryBag: SKSpriteNode!
-    private var speechBubble: SKSpriteNode!
+    private var bubbleContainer: SKNode!
+    private var bubbleBg: SKSpriteNode!
+    
+    private var chevronBtn: SKSpriteNode!
+    private var dayHud: SKSpriteNode!
+    private var currencyHud: SKSpriteNode!
+    private var instructionBtn: SKSpriteNode!
     
     private var currentCustomer: CustomerModel?
     
-    private let finalCustomerPosition = CGPoint(x: -0.28, y: -0.08)
+    private let finalCustomerPosition = CGPoint(x: -0.28, y: -0.22)
     private let finalBagPosition = CGPoint(x: 0.32, y: -0.18)
+    
+    private let plainTextColor = UIColor(red: 255.0/255.0, green: 247.0/255.0, blue: 234.0/255.0, alpha: 1.0)
     
     override func didMove(to view: SKView) {
         self.anchorPoint = CGPoint(x: 0.5, y: 0.5)
@@ -17,11 +25,12 @@ class CustomerScene: SKScene {
         currentCustomer = CustomerManager.shared.getNextCustomer()
         
         if currentCustomer == nil {
-            CustomerManager.shared.generateCustomers(forDay: 1)
+            CustomerManager.shared.generateCustomers(forDay: DayManager.shared.currentDay)
             currentCustomer = CustomerManager.shared.getNextCustomer()
         }
         
         setupBackground()
+        setupUI()
         setupCustomer()
         setupForeground()
         setupLaundryBag()
@@ -38,13 +47,86 @@ class CustomerScene: SKScene {
         addChild(background)
     }
     
+    private func setupUI() {
+        let topY = self.size.height * 0.40
+        var currentX = -self.size.width * 0.45
+        let horizontalSpacing: CGFloat = 15
+        
+        dayHud = SKSpriteNode(imageNamed: AssetName.UI.hudIndicator)
+        dayHud.position = CGPoint(x: currentX + dayHud.size.width / 2, y: topY)
+        dayHud.zPosition = 100
+        addChild(dayHud)
+        
+        let dayContent = SKNode()
+        let sunIcon = SKSpriteNode(imageNamed: AssetName.UI.sunIcon)
+        sunIcon.position = CGPoint.zero
+        
+        let dayLabel = SKLabelNode(fontNamed: AssetName.Font.comica)
+        dayLabel.text = "DAY \(DayManager.shared.currentDay)"
+        dayLabel.fontSize = 24
+        dayLabel.fontColor = plainTextColor
+        dayLabel.verticalAlignmentMode = .center
+        dayLabel.horizontalAlignmentMode = .left
+        dayLabel.position = CGPoint(x: sunIcon.size.width / 2 + 10, y: 0)
+        
+        dayContent.addChild(sunIcon)
+        dayContent.addChild(dayLabel)
+        
+        let dayTotalWidth = (sunIcon.size.width / 2) + 10 + dayLabel.frame.width
+        dayContent.position = CGPoint(x: -dayTotalWidth / 2, y: 0)
+        dayContent.zPosition = 101
+        dayHud.addChild(dayContent)
+        
+        currentX += dayHud.size.width + horizontalSpacing
+        
+        currencyHud = SKSpriteNode(imageNamed: AssetName.UI.hudIndicator)
+        currencyHud.position = CGPoint(x: currentX + currencyHud.size.width / 2, y: topY)
+        currencyHud.zPosition = 100
+        addChild(currencyHud)
+        
+        let currencyContent = SKNode()
+        let gemIcon = SKSpriteNode(imageNamed: AssetName.UI.gemIcon)
+        gemIcon.position = CGPoint.zero
+        
+        let currencyLabel = SKLabelNode(fontNamed: AssetName.Font.comica)
+        currencyLabel.text = "\(CurrencyManager.shared.coins)"
+        currencyLabel.fontSize = 24
+        currencyLabel.fontColor = plainTextColor
+        currencyLabel.verticalAlignmentMode = .center
+        currencyLabel.horizontalAlignmentMode = .left
+        currencyLabel.position = CGPoint(x: gemIcon.size.width / 2 + 10, y: 0)
+        
+        currencyContent.addChild(gemIcon)
+        currencyContent.addChild(currencyLabel)
+        
+        let currencyTotalWidth = (gemIcon.size.width / 2) + 10 + currencyLabel.frame.width
+        currencyContent.position = CGPoint(x: -currencyTotalWidth / 2, y: 0)
+        currencyContent.zPosition = 101
+        currencyHud.addChild(currencyContent)
+        
+        instructionBtn = SKSpriteNode(imageNamed: AssetName.UI.btnInstruction)
+        instructionBtn.setScale(0.8)
+        instructionBtn.position = CGPoint(x: self.size.width * 0.43, y: topY)
+        instructionBtn.zPosition = 100
+        addChild(instructionBtn)
+        
+        chevronBtn = SKSpriteNode(imageNamed: AssetName.UI.chevronRight)
+        chevronBtn.setScale(0.8)
+        chevronBtn.position = CGPoint(x: self.size.width * 0.43, y: 0)
+        chevronBtn.zPosition = 100
+        addChild(chevronBtn)
+    }
+    
     private func setupCustomer() {
         let characterImage = currentCustomer?.characterImage ?? AssetName.Character.customer1
+        let texture = SKTexture(imageNamed: characterImage)
+        customerNode = SKSpriteNode(texture: texture)
         
-        customerNode = SKSpriteNode(imageNamed: characterImage)
-        customerNode.setScale(0.22)
+        let targetWidth: CGFloat = 290.0
+        let scaleFactor = targetWidth / texture.size().width
+        customerNode.setScale(scaleFactor)
         
-        customerNode.position = CGPoint(x: -self.size.width, y: -self.size.height * 0.08)
+        customerNode.position = CGPoint(x: -self.size.width, y: -self.size.height * 0.22)
         customerNode.zPosition = 0
         addChild(customerNode)
     }
@@ -58,28 +140,31 @@ class CustomerScene: SKScene {
     }
     
     private func setupLaundryBag() {
-        laundryBag = SKSpriteNode(imageNamed: AssetName.Item.dirtyClothesBag)
-        laundryBag.setScale(0.15)
+        let bagTexture = SKTexture(imageNamed: AssetName.Item.dirtyClothesBag)
+        laundryBag = SKSpriteNode(texture: bagTexture)
+        
+        let targetWidth: CGFloat = 250.0
+        let bagScaleFactor = targetWidth / bagTexture.size().width
+        laundryBag.setScale(bagScaleFactor)
         
         laundryBag.position = CGPoint(x: self.size.width * finalBagPosition.x, y: self.size.height * finalBagPosition.y)
-        
         laundryBag.zPosition = 20
         laundryBag.alpha = 0
         addChild(laundryBag)
         
         setupFlies()
     }
-    
+        
     private func setupFlies() {
         let fly1 = SKSpriteNode(imageNamed: AssetName.Item.fly1)
-        fly1.setScale(0.3)
-        fly1.position = CGPoint(x: -120, y: -20)
+        fly1.setScale(1)
+        fly1.position = CGPoint(x: -90, y: -20)
         fly1.zPosition = 1
         laundryBag.addChild(fly1)
         
         let fly2 = SKSpriteNode(imageNamed: AssetName.Item.fly2)
-        fly2.setScale(0.3)
-        fly2.position = CGPoint(x: 100, y: 80)
+        fly2.setScale(1)
+        fly2.position = CGPoint(x: 50, y: 20)
         fly2.zPosition = 1
         laundryBag.addChild(fly2)
         
@@ -88,55 +173,50 @@ class CustomerScene: SKScene {
     }
     
     private func setupSpeechBubble() {
-        speechBubble = SKSpriteNode(imageNamed: AssetName.UI.speechBubble)
-        speechBubble.setScale(0)
-        speechBubble.position = CGPoint(x: 0, y: self.size.height * 0.25)
-        speechBubble.zPosition = 30
+        bubbleContainer = SKNode()
+        bubbleContainer.position = CGPoint(x: 248, y: 85)
+        bubbleContainer.zPosition = 30
+        bubbleContainer.setScale(0)
+        
+        bubbleBg = SKSpriteNode(imageNamed: AssetName.UI.speechBubble)
+        bubbleBg.size = CGSize(width: 431, height: 81)
+        bubbleBg.position = CGPoint.zero
+        bubbleContainer.addChild(bubbleBg)
         
         let text = currentCustomer?.orderText ?? "WASH PLS."
         
-        let customFont = UIFont(name: AssetName.Font.comica, size: 33) ?? UIFont.systemFont(ofSize: 55, weight: .bold)
-        
-        let attributes: [NSAttributedString.Key: Any] = [
-            .font: customFont,
-            .foregroundColor: UIColor.white,
-            .strokeColor: UIColor.black,
-            .strokeWidth: -4.0
-        ]
-        
-        let attrString = NSAttributedString(string: text, attributes: attributes)
-        
-        let textLabel = SKLabelNode(attributedText: attrString)
+        let textLabel = SKLabelNode(fontNamed: AssetName.Font.comica)
+        textLabel.text = text.uppercased()
+        textLabel.fontSize = 32
+        textLabel.fontColor = plainTextColor
         textLabel.verticalAlignmentMode = .center
-        textLabel.position = CGPoint(x: 0, y: 0)
+        textLabel.horizontalAlignmentMode = .center
+        textLabel.position = CGPoint.zero
         textLabel.zPosition = 1
         
-        speechBubble.addChild(textLabel)
-        addChild(speechBubble)
+        bubbleContainer.addChild(textLabel)
+        addChild(bubbleContainer)
     }
     
     private func animateArrival() {
-        let walkIn = SKAction.moveTo(x: -self.size.width * 0.28, duration: 1.0)
+        let walkIn = SKAction.moveTo(x: self.size.width * finalCustomerPosition.x, duration: 1.0)
         walkIn.timingMode = .easeOut
         
         let bagAppear = SKAction.fadeAlpha(to: 1.0, duration: 0.2)
         let bagDrop = SKAction.moveBy(x: 0, y: -20, duration: 0.2)
         let bagSpawn = SKAction.group([bagAppear, bagDrop])
         
-        let popUp = SKAction.scale(to: 0.50, duration: 0.3)
-        let popBounce = SKAction.scale(to: 0.45, duration: 0.1)
-        let bubbleAnim = SKAction.sequence([popUp, popBounce])
+        let popUp = SKAction.scale(to: 1.0, duration: 0.3)
+        let popBounce = SKAction.scale(to: 0.95, duration: 0.1)
+        let bubbleAnim = SKAction.sequence([popUp, popBounce, SKAction.scale(to: 1.0, duration: 0.1)])
         
-        let customerSequence = SKAction.sequence([
-            walkIn
-        ])
-        customerNode.run(customerSequence)
+        customerNode.run(SKAction.sequence([walkIn]))
         
         let sceneAnimations = SKAction.sequence([
             SKAction.wait(forDuration: 1.0),
             SKAction.run { self.laundryBag.run(bagSpawn) },
             SKAction.wait(forDuration: 0.3),
-            SKAction.run { self.speechBubble.run(bubbleAnim) }
+            SKAction.run { self.bubbleContainer.run(bubbleAnim) }
         ])
         
         self.run(sceneAnimations)
@@ -155,17 +235,34 @@ class CustomerScene: SKScene {
         guard let touch = touches.first else { return }
         let location = touch.location(in: self)
         
-        if laundryBag.contains(location) {
-            
+        if chevronBtn.contains(location) {
             self.isUserInteractionEnabled = false
             
-            let scaleDown = SKAction.scale(to: 0.13, duration: 0.1)
-            let scaleUp = SKAction.scale(to: 0.15, duration: 0.1)
+            let scaleDown = SKAction.scale(to: 0.7, duration: 0.1)
+            let scaleUp = SKAction.scale(to: 0.8, duration: 0.1)
+            
+            chevronBtn.run(SKAction.sequence([scaleDown, scaleUp])) {
+                let washingScene = WashingScene(size: self.size)
+                SceneManager.shared.transition(to: washingScene, from: self.view)
+            }
+        }
+        
+        if instructionBtn.contains(location) {
+            let scaleDown = SKAction.scale(to: 0.7, duration: 0.1)
+            let scaleUp = SKAction.scale(to: 0.8, duration: 0.1)
+            instructionBtn.run(SKAction.sequence([scaleDown, scaleUp]))
+        }
+        
+        if laundryBag.contains(location) {
+            self.isUserInteractionEnabled = false
+            
+            let currentScale = laundryBag.xScale
+            let scaleDown = SKAction.scale(to: currentScale * 0.9, duration: 0.1)
+            let scaleUp = SKAction.scale(to: currentScale, duration: 0.1)
             let bounce = SKAction.sequence([scaleDown, scaleUp])
             
             laundryBag.run(bounce) {
                 let washingScene = WashingScene(size: self.size)
-                
                 SceneManager.shared.transition(to: washingScene, from: self.view)
             }
         }
