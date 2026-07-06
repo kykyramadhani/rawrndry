@@ -1,7 +1,7 @@
 {
   "images" : [
     {
-      "filename" : "chevron_left.png",
+      "filename" : "hudIndicator.png",
       "idiom" : "universal",
       "scale" : "1x"
     },

@@ -1,11 +1,3 @@
-//
-//  AssetName.swift
-//  TrialRawrndry
-//
-//  Created by Kyky on 03/07/26.
-//
-
-
 import Foundation
 
 enum AssetName {
@@ -19,6 +11,12 @@ enum AssetName {
     enum UI {
         static let buttonMain = "btnMain"
         static let speechBubble = "speechBubble"
+        
+        static let chevronRight = "btnChevronRight"
+        static let hudIndicator = "hudIndicator"
+        static let sunIcon = "sun"
+        static let gemIcon = "gemCurrency"
+        static let btnInstruction = "btnInstruction"
     }
     
     enum Character {
