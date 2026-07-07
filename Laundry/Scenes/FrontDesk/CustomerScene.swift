@@ -1,7 +1,13 @@
 import SpriteKit
 
 class CustomerScene: SKScene {
-    
+
+    /// The dirty-order pickup scene when there's still work to do, or the polished
+    /// HandoffScene once the current order is fully processed and ready to return.
+    static func makeCurrent(size: CGSize) -> SKScene {
+        GameState.shared.isReadyForHandoff ? HandoffScene(size: size) : CustomerScene(size: size)
+    }
+
     // Core Nodes
     private var customerNode: SKSpriteNode!
     private var laundryBag: SKSpriteNode!
@@ -10,6 +16,7 @@ class CustomerScene: SKScene {
     
     // UI Nodes
     private var chevronBtn: SKSpriteNode!
+    private var chevronLeftBtn: SKSpriteNode!
     private var dayHud: SKSpriteNode!
     private var currencyHud: SKSpriteNode!
     private var instructionBtn: SKSpriteNode!
@@ -28,7 +35,7 @@ class CustomerScene: SKScene {
         currentCustomer = CustomerManager.shared.getNextCustomer()
         
         if currentCustomer == nil {
-            CustomerManager.shared.generateCustomers(forDay: DayManager.shared.currentDay)
+            CustomerManager.shared.generateCustomers(forDay: GameState.shared.currentDay)
             currentCustomer = CustomerManager.shared.getNextCustomer()
         }
         
@@ -38,7 +45,7 @@ class CustomerScene: SKScene {
         setupForeground()
         setupLaundryBag()
         setupSpeechBubble()
-        
+
         animateArrival()
         
         AudioManager.shared.stopRiverAmbience()
@@ -56,76 +63,34 @@ class CustomerScene: SKScene {
     // MARK: - Setup UI Elements
     private func setupUI() {
         let topY = self.size.height * 0.40
-        var currentX = -self.size.width * 0.45
-        let horizontalSpacing: CGFloat = 15
-        
-        // --- 1. Day Indicator ---
-        dayHud = SKSpriteNode(imageNamed: AssetName.UI.hudIndicator)
-        dayHud.position = CGPoint(x: currentX + dayHud.size.width / 2, y: topY)
-        dayHud.zPosition = 100
-        addChild(dayHud)
-        
-        let dayContent = SKNode()
-        let sunIcon = SKSpriteNode(imageNamed: AssetName.UI.sunIcon)
-        sunIcon.position = CGPoint.zero
 
-        let dayLabel = SKLabelNode(fontNamed: AssetName.Font.comica)
-        dayLabel.text = "DAY \(DayManager.shared.currentDay)"
-        dayLabel.fontSize = 24
-        dayLabel.fontColor = plainTextColor
-        dayLabel.verticalAlignmentMode = .center
-        dayLabel.horizontalAlignmentMode = .left
-        dayLabel.position = CGPoint(x: sunIcon.size.width / 2 + 10, y: 0)
-        
-        dayContent.addChild(sunIcon)
-        dayContent.addChild(dayLabel)
-        
-        let dayTotalWidth = (sunIcon.size.width / 2) + 10 + dayLabel.frame.width
-        dayContent.position = CGPoint(x: -dayTotalWidth / 2, y: 0)
-        dayContent.zPosition = 101
-        dayHud.addChild(dayContent)
-        
-        currentX += dayHud.size.width + horizontalSpacing
-        
-        // --- 2. Currency Indicator ---
-        currencyHud = SKSpriteNode(imageNamed: AssetName.UI.hudIndicator)
-        currencyHud.position = CGPoint(x: currentX + currencyHud.size.width / 2, y: topY)
-        currencyHud.zPosition = 100
-        addChild(currencyHud)
-        
-        let currencyContent = SKNode()
-        let gemIcon = SKSpriteNode(imageNamed: AssetName.UI.gemIcon)
-        gemIcon.position = CGPoint.zero
-        
-        let currencyLabel = SKLabelNode(fontNamed: AssetName.Font.comica)
-        currencyLabel.text = "\(CurrencyManager.shared.coins)"
-        currencyLabel.fontSize = 24
-        currencyLabel.fontColor = plainTextColor
-        currencyLabel.verticalAlignmentMode = .center
-        currencyLabel.horizontalAlignmentMode = .left
-        currencyLabel.position = CGPoint(x: gemIcon.size.width / 2 + 10, y: 0)
-        
-        currencyContent.addChild(gemIcon)
-        currencyContent.addChild(currencyLabel)
-        
-        let currencyTotalWidth = (gemIcon.size.width / 2) + 10 + currencyLabel.frame.width
-        currencyContent.position = CGPoint(x: -currencyTotalWidth / 2, y: 0)
-        currencyContent.zPosition = 101
-        currencyHud.addChild(currencyContent)
-        
-        // --- 3. Instruction Button ---
+        let hud = addCurrencyHUD(
+            topLeftOrigin: CGPoint(x: -self.size.width * 0.45, y: topY),
+            day: GameState.shared.currentDay,
+            coins: GameState.shared.score
+        )
+        dayHud = hud.day
+        currencyHud = hud.gem
+
+        // --- Instruction Button ---
         instructionBtn = SKSpriteNode(imageNamed: AssetName.UI.btnInstruction)
         instructionBtn.setScale(0.8)
         instructionBtn.position = CGPoint(x: self.size.width * 0.43, y: topY)
         instructionBtn.zPosition = 100
         addChild(instructionBtn)
-        
-        // --- 4. Chevron Button ---
+
+        // --- Chevron Buttons ---
         chevronBtn = SKSpriteNode(imageNamed: AssetName.UI.chevronRight)
         chevronBtn.setScale(0.8)
         chevronBtn.position = CGPoint(x: self.size.width * 0.43, y: 0)
         chevronBtn.zPosition = 100
         addChild(chevronBtn)
+
+        chevronLeftBtn = SKSpriteNode(imageNamed: AssetName.UI.chevronLeft)
+        chevronLeftBtn.setScale(0.8)
+        chevronLeftBtn.position = CGPoint(x: -self.size.width * 0.43, y: 0)
+        chevronLeftBtn.zPosition = 100
+        addChild(chevronLeftBtn)
     }
     
     private func setupCustomer() {
@@ -245,7 +210,9 @@ class CustomerScene: SKScene {
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let touch = touches.first else { return }
         let location = touch.location(in: self)
-        
+
+        if handleTipPopupTap(at: location) { return }
+
         if chevronBtn.contains(location) {
             self.isUserInteractionEnabled = false
             
@@ -262,8 +229,23 @@ class CustomerScene: SKScene {
             let scaleDown = SKAction.scale(to: 0.7, duration: 0.1)
             let scaleUp = SKAction.scale(to: 0.8, duration: 0.1)
             instructionBtn.run(SKAction.sequence([scaleDown, scaleUp]))
+            showTipPopup(text: "Press the sack to proceed to washing process")
+            return
         }
-        
+
+        if chevronLeftBtn.contains(location) {
+            self.isUserInteractionEnabled = false
+
+            let scaleDown = SKAction.scale(to: 0.7, duration: 0.1)
+            let scaleUp = SKAction.scale(to: 0.8, duration: 0.1)
+
+            chevronLeftBtn.run(SKAction.sequence([scaleDown, scaleUp])) {
+                let foldingScene = FoldingScene(size: self.size)
+                SceneManager.shared.transition(to: foldingScene, from: self.view)
+            }
+            return
+        }
+
         if laundryBag.contains(location) {
             self.isUserInteractionEnabled = false
             

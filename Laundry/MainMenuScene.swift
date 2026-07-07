@@ -63,7 +63,7 @@ class MainMenuScene: SKScene {
         switch tappedNodeName(at: location) {
         case "start":
             runButtonTapAnimation(on: startButton) {
-                self.goTo(CustomerOrderScene(size: self.size))
+                self.goTo(CustomerScene(size: self.size))
             }
         case "settings":
             runButtonTapAnimation(on: settingsButton)

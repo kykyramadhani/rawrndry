@@ -23,31 +23,20 @@ enum OrderType: CaseIterable {
 }
 
 enum ClothingType: CaseIterable {
-    case shirt
-    case pants
-    case dress
+    case clothes
 
     var displayName: String {
         switch self {
-        case .shirt: return "Shirt"
-        case .pants: return "Pants"
-        case .dress: return "Dress"
+        case .clothes: return "Clothes"
         }
     }
 
     /// Name of the sprite asset for this clothing type.
     var imageName: String {
         switch self {
-        case .shirt: return "shirt"
-        case .pants: return "pants"
-        case .dress: return "dress"
+        case .clothes: return "washingClothes1"
         }
     }
-}
-
-/// One of the four swipe gestures needed to wrap an item in the Folding station.
-enum WrapDirection: CaseIterable {
-    case swipeDown, swipeRight, swipeUp, swipeLeft
 }
 
 /// Where a single clothing item is in the wash → dry → fold pipeline, and how far
@@ -56,12 +45,14 @@ enum WrapDirection: CaseIterable {
 struct LaundryItemProgress {
     var washProgress: CGFloat = 0
     var dryProgress: CGFloat = 0
+    /// True while the item sits on the washing stone — either mid-scrub or clean and
+    /// awaiting the drag into the clean basket. False means it's in the dirty pile
+    /// (washProgress == 0) or already delivered to the clean basket (washProgress >= 1).
+    var isOnWashStone: Bool = false
     var isHungToDry: Bool = false
-    var wrapDirections: Set<WrapDirection> = []
 
     var isWashed: Bool { washProgress >= 1 }
     var isDried: Bool { dryProgress >= 1 }
-    var isFolded: Bool { wrapDirections.count == WrapDirection.allCases.count }
 }
 
 final class GameState {
@@ -75,17 +66,16 @@ final class GameState {
     var clothesCount: Int = 1
     var clothesTypes: [ClothingType] = []
 
-    /// Which stain sprite each item started with — assigned once per order so it stays
-    /// consistent everywhere the item is drawn (customer pile, washboard, etc.).
-    var itemStains: [String] = []
-
     /// Per-item pipeline progress, index-aligned with clothesTypes.
     var itemProgress: [LaundryItemProgress] = []
 
     /// Number of items torn while washing this order — deducted from the handoff payout.
     var tornItemsCount: Int = 0
 
-    /// The day the current order was generated for — lets CustomerOrderScene tell "revisiting
+    /// Whether the Folding station's leaf-wrap package has been tied off for this order.
+    var isPackaged: Bool = false
+
+    /// The day the current order was generated for — lets CustomerScene tell "revisiting
     /// an in-progress order" apart from "starting a new one" without a separate flag.
     var orderGeneratedDay: Int = 0
 
@@ -93,7 +83,6 @@ final class GameState {
 
     var isFullyWashed: Bool { itemProgress.allSatisfy { $0.isWashed } }
     var isFullyDried: Bool { itemProgress.allSatisfy { $0.isDried } }
-    var isFullyFolded: Bool { itemProgress.allSatisfy { $0.isFolded } }
 
     /// Whether every stage this order's type requires has been completed.
     var isReadyForHandoff: Bool {
@@ -101,8 +90,31 @@ final class GameState {
         switch orderType {
         case .washOnly: return true
         case .washAndDry: return isFullyDried
-        case .washDryIron: return isFullyDried && isFullyFolded
+        case .washDryIron: return isFullyDried && isPackaged
         }
+    }
+
+    /// Generates a fresh order for the current day if one hasn't been generated yet. Called from
+    /// CustomerScene normally, but also as a safety net from WashingScene, since some entry
+    /// points (the front-desk flow) jump straight into washing without visiting the order scene.
+    func generateOrderIfNeeded() {
+        guard orderGeneratedDay != currentDay else { return }
+
+        let maxItems: Int
+        switch currentDay {
+        case 1: maxItems = 1
+        case 2: maxItems = 2
+        default: maxItems = 3
+        }
+        let count = currentDay == 1 ? 1 : Int.random(in: 1...maxItems)
+
+        orderType = OrderType.allCases.randomElement() ?? .washOnly
+        clothesCount = count
+        clothesTypes = (0..<count).map { _ in ClothingType.allCases.randomElement() ?? .clothes }
+        itemProgress = Array(repeating: LaundryItemProgress(), count: count)
+        tornItemsCount = 0
+        isPackaged = false
+        orderGeneratedDay = currentDay
     }
 
     func resetForNewDay() {
@@ -118,8 +130,8 @@ final class GameState {
         clothesTypes = []
         orderType = .washOnly
         tornItemsCount = 0
-        itemStains = []
         itemProgress = []
+        isPackaged = false
         orderGeneratedDay = 0
     }
 }

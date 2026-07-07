@@ -13,10 +13,15 @@ enum AssetName {
         static let speechBubble = "speechBubble"
         
         static let chevronRight = "btnChevronRight"
+        static let chevronLeft = "btnChevronLeft"
         static let hudIndicator = "hudIndicator"
         static let sunIcon = "sun"
         static let gemIcon = "gemCurrency"
         static let btnInstruction = "btnInstruction"
+        static let popUpFrame = "popUpFrame"
+        static let btnClose = "btnClose"
+        static let iconStarOn = "icon-star-on"
+        static let iconStarOff = "icon-star-off"
     }
     
     enum Character {

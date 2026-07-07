@@ -14,7 +14,7 @@ enum Station: Int, CaseIterable {
 
     func makeScene(size: CGSize) -> SKScene {
         switch self {
-        case .customer: return CustomerOrderScene(size: size)
+        case .customer: return CustomerScene.makeCurrent(size: size)
         case .washing: return WashingScene(size: size)
         case .drying: return DryingScene(size: size)
         case .folding: return FoldingScene(size: size)
@@ -35,15 +35,15 @@ extension SKScene {
     @discardableResult
     func addStationArrows(current: Station) -> (left: SKSpriteNode, right: SKSpriteNode) {
         let left = makeButton(
-            imageNamed: "arrow-left",
+            imageNamed: AssetName.UI.chevronLeft,
             position: CGPoint(x: size.width * 0.05, y: size.height * 0.5),
-            scale: 0.02,
+            scale: 0.8,
             nodeName: "stationLeft"
         )
         let right = makeButton(
-            imageNamed: "arrow-right",
+            imageNamed: AssetName.UI.chevronRight,
             position: CGPoint(x: size.width * 0.95, y: size.height * 0.5),
-            scale: 0.02,
+            scale: 0.8,
             nodeName: "stationRight"
         )
         return (left, right)

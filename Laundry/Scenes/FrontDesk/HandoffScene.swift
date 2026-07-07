@@ -1,0 +1,398 @@
+import SpriteKit
+
+/// The bookend to CustomerScene: same customer, same desk, but the player is now
+/// handing back the finished laundry instead of receiving a dirty order.
+class HandoffScene: SKScene {
+
+    // Core Nodes
+    private var customerNode: SKSpriteNode!
+    private var packageNode: SKNode!
+    private var bubbleContainer: SKNode!
+    private var bubbleBg: SKSpriteNode!
+    private var bubbleLabel: SKLabelNode!
+
+    // UI Nodes
+    private var chevronBtn: SKSpriteNode!
+    private var chevronLeftBtn: SKSpriteNode!
+    private var dayHud: SKSpriteNode!
+    private var currencyHud: SKSpriteNode!
+    private var instructionBtn: SKSpriteNode!
+
+    private var isHandedOff = false
+    private var isDraggingPackage = false
+    private var dragOffset = CGPoint.zero
+    private var packageOriginalPosition = CGPoint.zero
+
+    private let finalCustomerPosition = CGPoint(x: -0.28, y: -0.22)
+    private let finalPackagePosition = CGPoint(x: 0.32, y: -0.18)
+
+    private let plainTextColor = UIColor(red: 255.0/255.0, green: 247.0/255.0, blue: 234.0/255.0, alpha: 1.0)
+    private let plainTextBrown = UIColor(red: 143.0/255.0, green: 43.0/255.0, blue: 18.0/255.0, alpha: 1.0)
+
+    private let thankYouTexts = [
+        "CLEAN! ME HAPPY!",
+        "SO FRESH! THANK YOU!",
+        "GOOD JOB! ME PAY!",
+        "SMELL NICE! TAKE COIN!"
+    ]
+
+    override func didMove(to view: SKView) {
+        self.anchorPoint = CGPoint(x: 0.5, y: 0.5)
+
+        setupBackground()
+        setupUI()
+        setupCustomer()
+        setupForeground()
+        setupPackage()
+        setupSpeechBubble()
+
+        animateArrival()
+
+        AudioManager.shared.stopRiverAmbience()
+        AudioManager.shared.playThemeBGM()
+    }
+
+    private func setupBackground() {
+        let background = SKSpriteNode(imageNamed: AssetName.Background.frontDesk)
+        background.size = self.size
+        background.position = CGPoint.zero
+        background.zPosition = -10
+        addChild(background)
+    }
+
+    // MARK: - Setup UI Elements
+    private func setupUI() {
+        let topY = self.size.height * 0.40
+
+        let hud = addCurrencyHUD(
+            topLeftOrigin: CGPoint(x: -self.size.width * 0.45, y: topY),
+            day: GameState.shared.currentDay,
+            coins: GameState.shared.score
+        )
+        dayHud = hud.day
+        currencyHud = hud.gem
+
+        // --- Instruction Button ---
+        instructionBtn = SKSpriteNode(imageNamed: AssetName.UI.btnInstruction)
+        instructionBtn.setScale(0.8)
+        instructionBtn.position = CGPoint(x: self.size.width * 0.43, y: topY)
+        instructionBtn.zPosition = 100
+        addChild(instructionBtn)
+
+        // --- Chevron Buttons ---
+        chevronBtn = SKSpriteNode(imageNamed: AssetName.UI.chevronRight)
+        chevronBtn.setScale(0.8)
+        chevronBtn.position = CGPoint(x: self.size.width * 0.43, y: 0)
+        chevronBtn.zPosition = 100
+        addChild(chevronBtn)
+
+        chevronLeftBtn = SKSpriteNode(imageNamed: AssetName.UI.chevronLeft)
+        chevronLeftBtn.setScale(0.8)
+        chevronLeftBtn.position = CGPoint(x: -self.size.width * 0.43, y: 0)
+        chevronLeftBtn.zPosition = 100
+        addChild(chevronLeftBtn)
+    }
+
+    private func setupCustomer() {
+        let customerImages = [
+            AssetName.Character.customer1,
+            AssetName.Character.customer2,
+            AssetName.Character.customer3,
+            AssetName.Character.customer4
+        ]
+        let characterImage = customerImages[(GameState.shared.currentDay - 1) % customerImages.count]
+        let texture = SKTexture(imageNamed: characterImage)
+        customerNode = SKSpriteNode(texture: texture)
+
+        let targetWidth: CGFloat = 290.0
+        let scaleFactor = targetWidth / texture.size().width
+        customerNode.setScale(scaleFactor)
+
+        customerNode.position = CGPoint(x: -self.size.width, y: -self.size.height * 0.22)
+        customerNode.zPosition = 0
+        addChild(customerNode)
+    }
+
+    private func setupForeground() {
+        let foreground = SKSpriteNode(imageNamed: AssetName.Item.foregroundDesk)
+        foreground.size = self.size
+        foreground.position = CGPoint.zero
+        foreground.zPosition = 10
+        addChild(foreground)
+    }
+
+    /// The same tied leaf-wrap bundle produced at the Folding station.
+    private func setupPackage() {
+        let packageSize = CGSize(width: 200, height: 200)
+        packageOriginalPosition = CGPoint(x: self.size.width * finalPackagePosition.x, y: self.size.height * finalPackagePosition.y)
+
+        packageNode = SKNode()
+        packageNode.position = packageOriginalPosition
+        packageNode.zPosition = 20
+        packageNode.alpha = 0
+
+        let back = SKSpriteNode(imageNamed: "packagingState5Back")
+        back.size = packageSize
+        back.zPosition = 0
+        packageNode.addChild(back)
+
+        let clothes = SKSpriteNode(imageNamed: "packagingFoldedClothes1")
+        clothes.size = CGSize(width: packageSize.width * 0.8, height: packageSize.height * 0.8)
+        clothes.zPosition = 1
+        packageNode.addChild(clothes)
+
+        let front = SKSpriteNode(imageNamed: "packagingState5Front")
+        front.size = packageSize
+        front.zPosition = 2
+        packageNode.addChild(front)
+
+        let rope = SKSpriteNode(imageNamed: "packagingKnottedRope")
+        rope.size = CGSize(width: packageSize.width * 0.5, height: packageSize.height * 0.5)
+        rope.zPosition = 3
+        packageNode.addChild(rope)
+
+        addChild(packageNode)
+    }
+
+    private func setupSpeechBubble() {
+        bubbleContainer = SKNode()
+        bubbleContainer.position = CGPoint(x: 100, y: 45)
+        bubbleContainer.zPosition = 30
+        bubbleContainer.setScale(0)
+
+        bubbleBg = SKSpriteNode(imageNamed: AssetName.UI.speechBubble)
+        bubbleBg.size = CGSize(width: 431, height: 81)
+        bubbleBg.position = CGPoint.zero
+        bubbleContainer.addChild(bubbleBg)
+
+        bubbleLabel = SKLabelNode(fontNamed: AssetName.Font.comica)
+        bubbleLabel.text = (thankYouTexts.randomElement() ?? "THANK YOU!").uppercased()
+        bubbleLabel.fontSize = 32
+        bubbleLabel.fontColor = plainTextBrown
+        bubbleLabel.verticalAlignmentMode = .center
+        bubbleLabel.horizontalAlignmentMode = .center
+        bubbleLabel.position = CGPoint.zero
+        bubbleLabel.zPosition = 1
+
+        bubbleContainer.addChild(bubbleLabel)
+        addChild(bubbleContainer)
+    }
+
+    private func animateArrival() {
+        let walkIn = SKAction.moveTo(x: self.size.width * finalCustomerPosition.x, duration: 1.0)
+        walkIn.timingMode = .easeOut
+
+        let packageAppear = SKAction.fadeAlpha(to: 1.0, duration: 0.2)
+        let packageDrop = SKAction.moveBy(x: 0, y: -20, duration: 0.2)
+        let packageSpawn = SKAction.group([packageAppear, packageDrop])
+
+        let popUp = SKAction.scale(to: 1.0, duration: 0.3)
+        let popBounce = SKAction.scale(to: 0.95, duration: 0.1)
+        let bubbleAnim = SKAction.sequence([popUp, popBounce, SKAction.scale(to: 1.0, duration: 0.1)])
+
+        customerNode.run(SKAction.sequence([walkIn]))
+
+        let sceneAnimations = SKAction.sequence([
+            SKAction.wait(forDuration: 1.0),
+            SKAction.run { self.packageNode.run(packageSpawn) },
+            SKAction.wait(forDuration: 0.3),
+            SKAction.run { self.bubbleContainer.run(bubbleAnim) }
+        ])
+
+        self.run(sceneAnimations)
+    }
+
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard let touch = touches.first else { return }
+        let location = touch.location(in: self)
+
+        if handleTipPopupTap(at: location) { return }
+        if handleRewardPopupTap(at: location) { return }
+
+        if instructionBtn.contains(location) {
+            let scaleDown = SKAction.scale(to: 0.7, duration: 0.1)
+            let scaleUp = SKAction.scale(to: 0.8, duration: 0.1)
+            instructionBtn.run(SKAction.sequence([scaleDown, scaleUp]))
+            showTipPopup(text: "Drag the finished package to the customer")
+            return
+        }
+
+        if !isHandedOff, chevronLeftBtn.contains(location) {
+            let scaleDown = SKAction.scale(to: 0.7, duration: 0.1)
+            let scaleUp = SKAction.scale(to: 0.8, duration: 0.1)
+            chevronLeftBtn.run(SKAction.sequence([scaleDown, scaleUp])) {
+                let foldingScene = FoldingScene(size: self.size)
+                SceneManager.shared.transition(to: foldingScene, from: self.view)
+            }
+            return
+        }
+
+        guard !isHandedOff, packageNode.contains(location) else { return }
+        isDraggingPackage = true
+        dragOffset = CGPoint(x: packageNode.position.x - location.x, y: packageNode.position.y - location.y)
+    }
+
+    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard isDraggingPackage, let touch = touches.first else { return }
+        let location = touch.location(in: self)
+        packageNode.position = CGPoint(x: location.x + dragOffset.x, y: location.y + dragOffset.y)
+    }
+
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard isDraggingPackage else { return }
+        isDraggingPackage = false
+
+        let dropZone = customerNode.frame.insetBy(dx: -40, dy: -40)
+        if dropZone.contains(packageNode.position) {
+            handOffPackage()
+        } else {
+            packageNode.run(.move(to: packageOriginalPosition, duration: 0.3))
+        }
+    }
+
+    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard isDraggingPackage else { return }
+        isDraggingPackage = false
+        packageNode.run(.move(to: packageOriginalPosition, duration: 0.3))
+    }
+
+    private func handOffPackage() {
+        isHandedOff = true
+
+        playSound("sfx-drop")
+
+        packageNode.run(.move(to: customerNode.position, duration: 0.3)) { [weak self] in
+            self?.completeHandoff()
+        }
+    }
+
+    private func completeHandoff() {
+        bubbleLabel.text = (thankYouTexts.randomElement() ?? "THANK YOU!").uppercased()
+        playSound("sfx-success")
+
+        calculateCoins()
+
+        run(.sequence([
+            .wait(forDuration: 1.0),
+            .run { [weak self] in
+                self?.showRewardPopup()
+            }
+        ]))
+    }
+
+    private func calculateCoins() {
+        let base = GameState.shared.clothesCount * 4000
+        let deduction = GameState.shared.tornItemsCount * 1000
+        GameState.shared.coinsEarned = max(0, base - deduction)
+    }
+
+    // MARK: - Reward popup
+
+    private func showRewardPopup() {
+        let center = sceneCenter
+        let panelSize = CGSize(width: min(size.width * 0.72, 280), height: 300)
+
+        let overlay = SKNode()
+        overlay.name = "rewardPopupOverlay"
+        overlay.zPosition = 500
+        addChild(overlay)
+
+        let panel = SKSpriteNode(imageNamed: AssetName.UI.popUpFrame)
+        panel.size = panelSize
+        panel.position = center
+        overlay.addChild(panel)
+
+        let earned = starCount()
+        let offsets: [CGFloat] = [-56, 0, 56]
+        for (index, offset) in offsets.enumerated() {
+            let star = SKSpriteNode(imageNamed: index < earned ? AssetName.UI.iconStarOn : AssetName.UI.iconStarOff)
+            star.size = CGSize(width: 44, height: 44)
+            star.position = CGPoint(x: center.x + offset, y: center.y + panelSize.height * 0.38)
+            star.zPosition = 1
+            overlay.addChild(star)
+        }
+
+        let rewardLabel = SKLabelNode(fontNamed: AssetName.Font.comica)
+        rewardLabel.text = "REWARD"
+        rewardLabel.fontSize = 28
+        rewardLabel.fontColor = .white
+        rewardLabel.verticalAlignmentMode = .center
+        rewardLabel.position = CGPoint(x: center.x, y: center.y + panelSize.height * 0.20)
+        rewardLabel.zPosition = 1
+        overlay.addChild(rewardLabel)
+
+        let amountBg = SKShapeNode(rectOf: CGSize(width: panelSize.width * 0.68, height: 54), cornerRadius: 16)
+        amountBg.fillColor = UIColor(red: 1.0, green: 0.796, blue: 0.302, alpha: 1.0)
+        amountBg.strokeColor = plainTextBrown
+        amountBg.lineWidth = 2
+        amountBg.position = CGPoint(x: center.x, y: center.y - 6)
+        amountBg.zPosition = 1
+        overlay.addChild(amountBg)
+
+        let gemIcon = SKSpriteNode(imageNamed: AssetName.UI.gemIcon)
+        gemIcon.position = CGPoint(x: -amountBg.frame.width * 0.28, y: 0)
+        gemIcon.zPosition = 1
+        amountBg.addChild(gemIcon)
+
+        let amountLabel = SKLabelNode(fontNamed: AssetName.Font.comica)
+        amountLabel.text = formattedCoins(GameState.shared.coinsEarned)
+        amountLabel.fontSize = 26
+        amountLabel.fontColor = plainTextBrown
+        amountLabel.verticalAlignmentMode = .center
+        amountLabel.horizontalAlignmentMode = .left
+        amountLabel.position = CGPoint(x: gemIcon.position.x + gemIcon.size.width / 2 + 10, y: 0)
+        amountLabel.zPosition = 1
+        amountBg.addChild(amountLabel)
+
+        let okButton = SKSpriteNode(imageNamed: "main-button")
+        okButton.name = "rewardOk"
+        okButton.setScale(1.6)
+        okButton.position = CGPoint(x: center.x, y: center.y - panelSize.height * 0.34)
+        okButton.zPosition = 1
+        overlay.addChild(okButton)
+
+        let okLabel = SKLabelNode(fontNamed: AssetName.Font.comica)
+        okLabel.text = "OK"
+        okLabel.fontSize = 20
+        okLabel.fontColor = .white
+        okLabel.verticalAlignmentMode = .center
+        okLabel.zPosition = 1
+        okButton.addChild(okLabel)
+    }
+
+    private func handleRewardPopupTap(at location: CGPoint) -> Bool {
+        guard let overlay = childNode(withName: "rewardPopupOverlay") else { return false }
+        if tappedNodeName(at: location) == "rewardOk" {
+            let okButton = overlay.childNode(withName: "rewardOk")
+            runButtonTapAnimation(on: okButton ?? overlay) { [weak self] in
+                guard let self else { return }
+                GameState.shared.score += GameState.shared.coinsEarned
+                GameState.shared.resetForNewDay()
+                self.goTo(CustomerScene(size: self.size))
+            }
+        }
+        return true
+    }
+
+    /// Percentage of the maximum possible payout this order could have earned (4000/item, minus tears).
+    private func starCount() -> Int {
+        let maxPossible = max(GameState.shared.clothesCount * 4000, 1)
+        let percentage = CGFloat(GameState.shared.coinsEarned) / CGFloat(maxPossible) * 100
+
+        if percentage >= 80 { return 3 }
+        if percentage >= 40 { return 2 }
+        return 1
+    }
+
+    private func formattedCoins(_ amount: Int) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.groupingSeparator = "."
+        formatter.usesGroupingSeparator = true
+        return formatter.string(from: NSNumber(value: amount)) ?? "\(amount)"
+    }
+
+    private func playSound(_ name: String) {
+        run(.playSoundFileNamed("\(name).wav", waitForCompletion: false))
+    }
+}
