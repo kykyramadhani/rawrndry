@@ -32,7 +32,6 @@ class CustomerScene: SKScene {
         self.anchorPoint = CGPoint(x: 0.5, y: 0.5)
         
         currentCustomer = CustomerManager.shared.getNextCustomer()
-        
         if currentCustomer == nil {
             CustomerManager.shared.generateCustomers(forDay: GameState.shared.currentDay)
             currentCustomer = CustomerManager.shared.getNextCustomer()
@@ -59,7 +58,6 @@ class CustomerScene: SKScene {
         addChild(background)
     }
     
-    // MARK: - Setup UI Elements
     private func setupUI() {
         let topY = self.size.height * 0.40
 
@@ -198,6 +196,12 @@ class CustomerScene: SKScene {
         fly.run(hover)
     }
     
+    private func transitionToWashingScene() {
+        let washingScene = WashingScene(size: self.size)
+        washingScene.itemsToWash = self.currentCustomer?.itemsToWash ?? []
+        SceneManager.shared.transition(to: washingScene, from: self.view)
+    }
+    
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let touch = touches.first else { return }
         let location = touch.location(in: self)
@@ -208,13 +212,10 @@ class CustomerScene: SKScene {
 
         if chevronBtn.contains(location) {
             self.isUserInteractionEnabled = false
-            
             let scaleDown = SKAction.scale(to: 0.7, duration: 0.1)
             let scaleUp = SKAction.scale(to: 0.8, duration: 0.1)
-            
             chevronBtn.run(SKAction.sequence([scaleDown, scaleUp])) {
-                let washingScene = WashingScene(size: self.size)
-                SceneManager.shared.transition(to: washingScene, from: self.view)
+                self.transitionToWashingScene()
             }
         }
         
@@ -228,15 +229,12 @@ class CustomerScene: SKScene {
 
         if laundryBag.contains(location) {
             self.isUserInteractionEnabled = false
-            
             let currentScale = laundryBag.xScale
             let scaleDown = SKAction.scale(to: currentScale * 0.9, duration: 0.1)
             let scaleUp = SKAction.scale(to: currentScale, duration: 0.1)
-            let bounce = SKAction.sequence([scaleDown, scaleUp])
             
-            laundryBag.run(bounce) {
-                let washingScene = WashingScene(size: self.size)
-                SceneManager.shared.transition(to: washingScene, from: self.view)
+            laundryBag.run(SKAction.sequence([scaleDown, scaleUp])) {
+                self.transitionToWashingScene()
             }
         }
     }

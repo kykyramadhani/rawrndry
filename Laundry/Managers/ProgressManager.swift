@@ -24,7 +24,7 @@ class ProgressManager {
     }
     
     func isSoapUnlocked(_ soap: SoapFragrance) -> Bool {
-        if soap == .floral { return true }
+        if soap == .rose { return true }
         return unlockedSoaps.contains(soap.rawValue)
     }
     

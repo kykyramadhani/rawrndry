@@ -43,11 +43,33 @@ enum AssetName {
         static let fly1 = "frontdeskFlies1"
         static let fly2 = "frontdeskFlies2"
         
-        // Washing
-        static let washingBasket = "washingBasket"
-        static let washingBasketPiles = "washingBasketPiles"
-        static let washingSoap = "washingSoap"
-        static let dirtStain = "washingStain"
+        // Washing - Static
+        static let washingBasketEmpty = "washingBasket" 
+        
+        // Washing - Dynamic
+        static func washingBasketPile(patternID: Int) -> String {
+            return "washingBasket\(patternID)"
+        }
+        
+        static func washingPickedClothes(patternID: Int) -> String {
+            return "washingPickedClothes\(patternID)"
+        }
+        
+        static func washingClothes(patternID: Int) -> String {
+            return "washingClothes\(patternID)"
+        }
+        
+        static func washingStain(id: Int) -> String {
+            return "washingStain\(id)"
+        }
+        
+        static func washingSoap(id: Int) -> String {
+            return "washingSoap\(id)"
+        }
+        
+        static func washingSoapPicked(id: Int) -> String {
+            return "washingSoap\(id)Picked"
+        }
     }
     
     enum Font {

@@ -5,7 +5,6 @@
 //  Created by Kyky on 03/07/26.
 //
 
-
 import Foundation
 
 class CustomerManager {
@@ -34,17 +33,23 @@ class CustomerManager {
         }
         
         for _ in 0..<totalCustomers {
-            let numberOfClothes = Int.random(in: 1...3)
+            let numberOfClothes = Int.random(in: 2...3)
+            
+            var availablePatterns = [1, 2, 3, 4]
+            
+            availablePatterns.shuffle()
+            
             var clothes: [LaundryItem] = []
             
-            for _ in 0..<numberOfClothes {
+            for i in 0..<numberOfClothes {
                 let randomStain: StainLevel = Bool.random() ? .slight : .hard
-                let randomPatternID = Int.random(in: 1...1) 
+
+                let uniquePatternID = availablePatterns[i]
                 
-                clothes.append(LaundryItem(patternID: randomPatternID, stain: randomStain))
+                clothes.append(LaundryItem(patternID: uniquePatternID, stain: randomStain))
             }
             
-            let randomSoap: SoapFragrance = Bool.random() ? .floral : .fruity
+            let randomSoap: SoapFragrance = Bool.random() ? .rose : .soapFruit
             let randomCharacter = availableImages.randomElement()!
             
             let newCustomer = CustomerModel(
