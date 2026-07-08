@@ -41,7 +41,8 @@
       "Bash(sips -r 90 --out /private/tmp/claude-501/-Users-auliaguss-Projects-Games-Laundry/cf62751a-6c07-499c-aba5-4c47d1eeae2c/scratchpad/screenshots/01_start_rot.png /private/tmp/claude-501/-Users-auliaguss-Projects-Games-Laundry/cf62751a-6c07-499c-aba5-4c47d1eeae2c/scratchpad/screenshots/01_start.png)",
       "Bash(osascript -e 'tell application \"System Events\" to click at {100,100}')",
       "Bash(swiftc -O AssetName.swift LaundryItem.swift CustomerModel.swift LevelDesign.swift CustomerManager.swift GameState.swift main.swift -o runtest)",
-      "Bash(/private/tmp/claude-501/-Users-auliaguss-Projects-Games-Laundry/cf62751a-6c07-499c-aba5-4c47d1eeae2c/scratchpad/logictest/runtest)"
+      "Bash(/private/tmp/claude-501/-Users-auliaguss-Projects-Games-Laundry/cf62751a-6c07-499c-aba5-4c47d1eeae2c/scratchpad/logictest/runtest)",
+      "Bash(./runtest)"
     ],
     "additionalDirectories": [
       "/Users/auliaguss/Projects/Games/Laundry/Laundry/Assets.xcassets/dress.imageset"

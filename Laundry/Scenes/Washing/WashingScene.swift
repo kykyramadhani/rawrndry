@@ -55,12 +55,18 @@ class WashingScene: SKScene {
     override func didMove(to view: SKView) {
         self.anchorPoint = CGPoint(x: 0.5, y: 0.5)
 
-        // Safety net: CustomerScene normally seeds GameState via startOrder(items:) before
-        // pushing this scene, but if WashingScene is somehow reached directly, make sure
-        // GameState's pipeline still matches the items this scene is actually processing.
-        if GameState.shared.clothesCount != itemsToWash.count {
-            GameState.shared.startOrder(items: itemsToWash)
+        // GameState is the persistent source of truth for the current order — restore from
+        // it whenever this scene wasn't handed itemsToWash directly (e.g. arriving here via
+        // the station chevron from Drying instead of fresh from CustomerScene). Never the
+        // other way around: overwriting GameState from an empty local list is what used to
+        // wipe real in-progress orders when navigating away mid-wash and back.
+        if itemsToWash.isEmpty {
+            itemsToWash = GameState.shared.currentOrderItems
         }
+
+        // Resume at the first item that isn't washed yet, instead of always restarting from
+        // index 0 — so leaving mid-order and coming back doesn't re-offer already-clean items.
+        currentItemIndex = GameState.shared.itemProgress.firstIndex(where: { !$0.isWashed }) ?? itemsToWash.count
 
         setupBackground()
         setupLeftBasket()
@@ -81,9 +87,20 @@ class WashingScene: SKScene {
         addSettingsButton()
 
         updateBasketPile()
+        restoreCleanBasketIfNeeded()
 
         AudioManager.shared.stopThemeBGM()
         AudioManager.shared.playRiverAmbience()
+    }
+
+    /// Re-shows the clean-basket pile art for whichever item was washed most recently, so
+    /// returning to this scene after already finishing some items doesn't show an empty
+    /// clean basket even though items really are done.
+    private func restoreCleanBasketIfNeeded() {
+        guard currentItemIndex > 0, currentItemIndex - 1 < itemsToWash.count else { return }
+        let lastWashed = itemsToWash[currentItemIndex - 1]
+        rightBasketPiles.texture = SKTexture(imageNamed: AssetName.Item.washingBasketPile(patternID: lastWashed.patternID))
+        rightBasketPiles.isHidden = false
     }
 
     private func setupBackground() {
@@ -209,14 +226,6 @@ class WashingScene: SKScene {
         activeStains.append(stain)
     }
 
-    /// Marks every item in GameState as washed once the queue is fully processed, so
-    /// Drying/Folding/Handoff (which read GameState.itemProgress) see this order as clean.
-    private func markGameStateFullyWashed() {
-        for i in GameState.shared.itemProgress.indices {
-            GameState.shared.itemProgress[i].washProgress = 1
-        }
-    }
-
     // MARK: - Workflow Logic
 
     private func beginWaitingForSoap() {
@@ -273,11 +282,15 @@ class WashingScene: SKScene {
                                          y: self.size.height * spreadClothesPosition.y)
         spreadClothes.zPosition = 4
 
+        // Mark this specific item washed in GameState right away — not only once the whole
+        // queue is done — so progress survives leaving mid-order (e.g. to peek at Drying)
+        // and coming back, instead of only living in this scene's local state until the end.
+        GameState.shared.itemProgress[currentItemIndex].washProgress = 1
+
         currentItemIndex += 1
         updateBasketPile()
 
         if currentItemIndex >= itemsToWash.count {
-            markGameStateFullyWashed()
             showHint(Loc.t(.washingHintNiceClean), on: hintLabel)
         }
     }

@@ -18,7 +18,6 @@ class DryingScene: SKScene {
     }
 
     private var itemNodes: [SKSpriteNode?] = []
-    private var wetOverlays: [SKSpriteNode?] = []
     private var dragState: (index: Int, origin: DragOrigin)?
 
     /// Which rack slot each currently-hung item occupies, assigned once when it's hung and
@@ -62,6 +61,13 @@ class DryingScene: SKScene {
     private let blowBarWidth: CGFloat = 200
     private let blowBarHeight: CGFloat = 18
 
+    /// Tints the actual clothing texture light blue while wet instead of laying a plain
+    /// rectangular color block on top — colorBlendFactor only tints the art's own opaque
+    /// pixels, so the wet look follows the garment's real silhouette (no visible box edges).
+    private let wetTintColor = UIColor(red: 0.55, green: 0.78, blue: 0.95, alpha: 1.0)
+
+    private var shakeCamera: SKCameraNode!
+
     private var ropeY: CGFloat { size.height * 0.78 }
     private var basketPosition: CGPoint { CGPoint(x: size.width * 0.15, y: size.height * 0.24) }
     private var dryBasketPosition: CGPoint { CGPoint(x: size.width * 0.85, y: size.height * 0.24) }
@@ -70,6 +76,14 @@ class DryingScene: SKScene {
     private var dryBasketZone: CGRect { CGRect(x: dryBasketPosition.x - 60, y: dryBasketPosition.y - 50, width: 120, height: 110) }
 
     override func didMove(to view: SKView) {
+        // A camera lets us shake the whole screen (see shakeScreen()) by moving the camera
+        // instead of scene content — positioned at scene center with no zoom/rotation, it
+        // renders identically to having no camera at all until it's actually shaken.
+        shakeCamera = SKCameraNode()
+        shakeCamera.position = CGPoint(x: size.width / 2, y: size.height / 2)
+        addChild(shakeCamera)
+        camera = shakeCamera
+
         addBackground(imageNamed: "dryingBackground")
         addCurrencyHUD(topLeftOrigin: CGPoint(x: size.width * 0.05, y: size.height * 0.90), day: GameState.shared.currentDay, coins: GameState.shared.score)
         addStationArrows(current: .drying)
@@ -136,8 +150,8 @@ class DryingScene: SKScene {
     private func addLeafTool() {
         let leaf = SKSpriteNode(imageNamed: "dryingLeafFan")
         leaf.name = "leafTool"
-        leaf.size = CGSize(width: 64, height: 54)
-        leaf.position = CGPoint(x: size.width * 0.5, y: ropeY - 20)
+        leaf.size = CGSize(width: 74, height: 60)
+        leaf.position = CGPoint(x: size.width * 0.5, y: ropeY - 70)
         leaf.zPosition = 40
         leaf.isHidden = true
         addChild(leaf)
@@ -206,7 +220,6 @@ class DryingScene: SKScene {
 
     private func setupItems() {
         itemNodes = Array(repeating: nil, count: GameState.shared.clothesTypes.count)
-        wetOverlays = Array(repeating: nil, count: GameState.shared.clothesTypes.count)
         itemSlots = [:]
 
         for index in GameState.shared.itemProgress.indices where GameState.shared.itemProgress[index].isHungToDry {
@@ -224,13 +237,9 @@ class DryingScene: SKScene {
         node.name = "item-\(index)"
         node.zPosition = 5
 
-        let wetOverlay = SKSpriteNode(color: UIColor.blue.withAlphaComponent(0.5), size: itemSize)
-        wetOverlay.zPosition = 1
         let progress = GameState.shared.itemProgress[index].dryProgress
-        wetOverlay.alpha = 1 - progress
-        wetOverlay.isHidden = progress >= 1
-        node.addChild(wetOverlay)
-        wetOverlays[index] = wetOverlay
+        node.color = wetTintColor
+        node.colorBlendFactor = 1 - progress
 
         return node
     }
@@ -423,15 +432,14 @@ class DryingScene: SKScene {
 
     private func advanceDrying() {
         let dryingIndices = GameState.shared.itemProgress.indices.filter {
-            GameState.shared.itemProgress[$0].isHungToDry && GameState.shared.itemProgress[$0].dryProgress < 1
+            GameState.shared.itemProgress[$0].isHungToDry && GameState.shared.itemProgress[$0].dryProgress < 1 && itemNodes[$0] != nil
         }
         guard !dryingIndices.isEmpty else { return }
 
         for index in dryingIndices {
             let progress = min(1, GameState.shared.itemProgress[index].dryProgress + 0.12)
             GameState.shared.itemProgress[index].dryProgress = progress
-            wetOverlays[index]?.alpha = 1 - progress
-            wetOverlays[index]?.isHidden = progress >= 1
+            itemNodes[index]?.colorBlendFactor = 1 - progress
         }
 
         swayAndFlash(indices: dryingIndices)
@@ -466,34 +474,72 @@ class DryingScene: SKScene {
     /// distinct from the gentle sway a normal-strength blow triggers.
     private func dropOverblownItems() {
         let fallingIndices = GameState.shared.itemProgress.indices.filter {
-            GameState.shared.itemProgress[$0].isHungToDry && GameState.shared.itemProgress[$0].dryProgress < 1
+            GameState.shared.itemProgress[$0].isHungToDry && GameState.shared.itemProgress[$0].dryProgress < 1 && itemNodes[$0] != nil
         }
         guard !fallingIndices.isEmpty else { return }
 
         showStatus("Too hard! It fell!")
         run(.sequence([.wait(forDuration: 1.0), .run { [weak self] in self?.hideStatus() }]))
+        shakeScreen()
+        HapticsManager.shared.playOverblowImpact()
 
         for index in fallingIndices {
             guard let node = itemNodes[index] else { continue }
             let variant = GameState.shared.itemProgress[index].dryingVariant
-            node.texture = SKTexture(imageNamed: "dryingClothesFallen\(variant)")
-            node.zPosition = 4
+            let groundPosition = CGPoint(x: node.position.x, y: node.position.y - 60)
 
-            let drop = SKAction.group([
-                .moveBy(x: 0, y: -60, duration: 0.35),
-                .fadeOut(withDuration: 0.35),
-                .rotate(byAngle: .pi / 6, duration: 0.35)
-            ])
-            node.run(.sequence([drop, .removeFromParent()]))
+            node.run(.sequence([
+                .group([
+                    .moveBy(x: 0, y: -60, duration: 0.35),
+                    .rotate(byAngle: .pi / 6, duration: 0.35)
+                ]),
+                .removeFromParent()
+            ]))
             itemNodes[index] = nil
             freeSlot(for: index)
 
-            GameState.shared.itemProgress[index].isHungToDry = false
-            GameState.shared.itemProgress[index].dryProgress = 0
-        }
+            // Leave a fallen-clothes sprite lying on the ground as a visible penalty beat,
+            // then sweep the item back into the wet basket 2 seconds later — not instantly.
+            // isHungToDry/dryProgress stay untouched until then, and the `itemNodes[$0] !=
+            // nil` filters above keep this index out of advanceDrying/another overblow in
+            // the meantime, so it can't be double-processed while it's "on the ground."
+            let groundEffect = SKSpriteNode(imageNamed: "dryingClothesFallen\(variant)")
+            groundEffect.size = itemSize
+            groundEffect.position = groundPosition
+            groundEffect.zRotation = .pi / 6
+            groundEffect.zPosition = 4
+            addChild(groundEffect)
 
-        updateBasketPilesVisibility()
-        updateBlowBar()
+            groundEffect.run(.sequence([
+                .wait(forDuration: 2.0),
+                .fadeOut(withDuration: 0.3),
+                .removeFromParent(),
+                .run { [weak self] in
+                    guard let self else { return }
+                    GameState.shared.itemProgress[index].isHungToDry = false
+                    GameState.shared.itemProgress[index].dryProgress = 0
+                    self.updateBasketPilesVisibility()
+                    self.updateBlowBar()
+                }
+            ]))
+        }
+    }
+
+    /// Jolts the camera through a quick decaying zigzag — since the camera defines the
+    /// viewport, moving it (rather than any content node) shakes literally everything
+    /// on screen, popups included, matching the force of an overblow.
+    private func shakeScreen() {
+        let originalPosition = shakeCamera.position
+        let shake = SKAction.sequence([
+            .moveBy(x: -14, y: 6, duration: 0.035),
+            .moveBy(x: 22, y: -10, duration: 0.035),
+            .moveBy(x: -20, y: 8, duration: 0.035),
+            .moveBy(x: 16, y: -6, duration: 0.035),
+            .moveBy(x: -10, y: 4, duration: 0.035),
+            .moveBy(x: 6, y: -2, duration: 0.035),
+            .move(to: originalPosition, duration: 0.03)
+        ])
+        shakeCamera.run(shake)
     }
 
     /// Bar reflects actual drying progress (average of all hung items) toward 100% — not raw mic volume.

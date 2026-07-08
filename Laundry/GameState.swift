@@ -73,6 +73,12 @@ final class GameState {
     /// Per-item pipeline progress, index-aligned with clothesTypes.
     var itemProgress: [LaundryItemProgress] = []
 
+    /// The current order's actual clothes (pattern, stain, requested soap), index-aligned
+    /// with `itemProgress`. The persistent source of truth for WashingScene's queue — scenes
+    /// are recreated on every navigation, so this is what lets picking up where you left off
+    /// work when leaving Washing mid-order (e.g. to peek at Drying) and coming back.
+    var currentOrderItems: [LaundryItem] = []
+
     /// Number of items torn while washing this order — deducted from the handoff payout.
     var tornItemsCount: Int = 0
 
@@ -90,6 +96,11 @@ final class GameState {
     var currentOrderReward: Int = 0
 
     private init() {}
+
+    /// Folding and Handoff treat the order as one bundle rather than item-by-item, so the
+    /// first item's pattern (already carried through from washing/drying via `dryingVariant`)
+    /// stands in for the whole bundle's look at those two stations.
+    var currentOrderPatternID: Int { itemProgress.first?.dryingVariant ?? 1 }
 
     var isFullyWashed: Bool { itemProgress.allSatisfy { $0.isWashed } }
     var isFullyDried: Bool { itemProgress.allSatisfy { $0.isDried } }
@@ -124,6 +135,7 @@ final class GameState {
         self.orderType = orderType
         clothesCount = items.count
         clothesTypes = Array(repeating: .clothes, count: items.count)
+        currentOrderItems = items
         itemProgress = items.map { item in
             var progress = LaundryItemProgress()
             progress.dryingVariant = item.patternID
@@ -146,6 +158,7 @@ final class GameState {
         orderType = .washOnly
         tornItemsCount = 0
         itemProgress = []
+        currentOrderItems = []
         isPackaged = false
         orderGeneratedDay = 0
         currentCustomerImage = AssetName.Character.customer1

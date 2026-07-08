@@ -44,7 +44,7 @@ class FoldingScene: SKScene {
     private let leafSize = CGSize(width: 300, height: 300)
     private let ropeSize = CGSize(width: 90, height: 90)
 
-    private var packageCenter: CGPoint { CGPoint(x: size.width * 0.5, y: size.height * 0.55) }
+    private var packageCenter: CGPoint { CGPoint(x: size.width * 0.5, y: size.height * 0.5) }
     private var ropeStartPosition: CGPoint { CGPoint(x: size.width * 0.88, y: size.height * 0.3) }
     private var basketPosition: CGPoint { CGPoint(x: size.width * 0.1, y: size.height * 0.2) }
 
@@ -97,7 +97,7 @@ class FoldingScene: SKScene {
     // MARK: - Setup
 
     private func addBasket() {
-        basket = SKSpriteNode(imageNamed: isFoldingReady ? "packagingBasketFull" : "packagingBasketEmpty")
+        basket = SKSpriteNode(imageNamed: isFoldingReady ? "packagingBasket4" : "packagingBasketEmpty")
         basket.size = CGSize(width: 90, height: 70)
         basket.position = basketPosition
         basket.zPosition = 5
@@ -112,7 +112,7 @@ class FoldingScene: SKScene {
         clothesShadow.isHidden = true
         addChild(clothesShadow)
 
-        clothesPile = SKSpriteNode(imageNamed: "packagingFoldedClothes\(GameState.shared.clothesCount)")
+        clothesPile = SKSpriteNode(imageNamed: "packagingFoldedClothes\(GameState.shared.currentOrderPatternID)")
         clothesPile.name = "clothesPile"
         clothesPile.size = CGSize(width: leafSize.width * 0.8, height: leafSize.height * 0.8)
         clothesPile.position = packageCenter
@@ -121,15 +121,16 @@ class FoldingScene: SKScene {
         addChild(clothesPile)
     }
 
-    /// The clothes sitting in the basket, dragged into the package to reveal `clothesPile`.
-    /// Hidden until `isFoldingReady` — an empty basket has nothing to drag out.
+    /// The clothes lifted out of the basket and dragged into the package to reveal
+    /// `clothesPile`. Hidden except while actively being dragged — the basket art itself
+    /// already shows a pile when ready, so leaving this visible at rest doubled it up.
     private func addClothesDragIcon() {
-        clothesDragIcon = SKSpriteNode(imageNamed: "packagingFoldedClothes\(GameState.shared.clothesCount)")
+        clothesDragIcon = SKSpriteNode(imageNamed: "packagingFoldedClothes\(GameState.shared.currentOrderPatternID)")
         clothesDragIcon.name = "clothesDragIcon"
         clothesDragIcon.size = CGSize(width: 100, height: 100)
         clothesDragIcon.position = basketPosition
         clothesDragIcon.zPosition = 6
-        clothesDragIcon.isHidden = !isFoldingReady
+        clothesDragIcon.isHidden = true
         addChild(clothesDragIcon)
     }
 
@@ -171,13 +172,14 @@ class FoldingScene: SKScene {
         }
     }
 
+    /// Visible and draggable from the start — dropping it early just snaps back with no
+    /// effect (see resolveRopeDrop) rather than being blocked outright.
     private func addRope() {
         rope = SKSpriteNode(imageNamed: "packagingRope")
         rope.name = "rope"
         rope.size = ropeSize
         rope.position = ropeStartPosition
         rope.zPosition = 3
-        rope.isHidden = true
         addChild(rope)
     }
 
@@ -205,7 +207,6 @@ class FoldingScene: SKScene {
         refreshArrows()
 
         if currentState == 5 {
-            rope.isHidden = false
             showHint(Loc.t(.foldingHintTieRope), on: hintLabel)
         }
     }
@@ -270,11 +271,12 @@ class FoldingScene: SKScene {
 
         if isFoldingReady, !clothesPlaced, clothesDragIcon.frame.insetBy(dx: -10, dy: -10).contains(location) {
             isDraggingClothes = true
+            clothesDragIcon.isHidden = false
             clothesDragOffset = CGPoint(x: clothesDragIcon.position.x - location.x, y: clothesDragIcon.position.y - location.y)
             return
         }
 
-        if currentState == 5, !isRopeTied, rope.frame.insetBy(dx: -10, dy: -10).contains(location) {
+        if !isRopeTied, rope.frame.insetBy(dx: -10, dy: -10).contains(location) {
             isDraggingRope = true
             ropeDragOffset = CGPoint(x: rope.position.x - location.x, y: rope.position.y - location.y)
             rope.texture = SKTexture(imageNamed: "packagingPickedRope")
@@ -325,6 +327,10 @@ class FoldingScene: SKScene {
     }
 
     override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
+        if isDraggingClothes {
+            clothesDragIcon.position = basketPosition
+            clothesDragIcon.isHidden = true
+        }
         isDraggingClothes = false
         isDraggingRope = false
         swipeStart = nil
@@ -374,7 +380,10 @@ class FoldingScene: SKScene {
 
     private func resolveClothesDrop() {
         guard packageBounds.contains(clothesDragIcon.position) else {
-            clothesDragIcon.run(.move(to: basketPosition, duration: 0.3))
+            clothesDragIcon.run(.sequence([
+                .move(to: basketPosition, duration: 0.3),
+                .run { [weak self] in self?.clothesDragIcon.isHidden = true }
+            ]))
             showHint(Loc.t(.foldingHintDragClothesToCenter), on: hintLabel)
             return
         }
@@ -392,6 +401,14 @@ class FoldingScene: SKScene {
     // MARK: - Rope drag
 
     private func resolveRopeDrop() {
+        // The package isn't actually ready to be tied yet — let the player drag the rope
+        // around freely, but dropping it anywhere just snaps it back with no side effects.
+        guard currentState == 5 else {
+            rope.run(.move(to: ropeStartPosition, duration: 0.3))
+            rope.texture = SKTexture(imageNamed: "packagingRope")
+            return
+        }
+
         guard packageBounds.contains(rope.position) else {
             rope.run(.move(to: ropeStartPosition, duration: 0.3))
             rope.texture = SKTexture(imageNamed: "packagingRope")
@@ -405,6 +422,11 @@ class FoldingScene: SKScene {
     private func completePackaging() {
         isRopeTied = true
         rope.isHidden = true
+        leafFront.texture = SKTexture(imageNamed: "packagingState6Front")
+
+        // Sealed now — no reason to still show the folded clothes underneath the closed wrap.
+        clothesPile.isHidden = true
+        clothesShadow.isHidden = true
 
         knottedRope.isHidden = false
         knottedRope.setScale(0.5)

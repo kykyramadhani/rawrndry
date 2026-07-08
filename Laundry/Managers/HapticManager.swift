@@ -107,6 +107,16 @@ class HapticsManager {
         }
     }
 
+    /// A single strong jolt for a one-off "you blew too hard" moment — distinct from the
+    /// continuous scrub pattern, so it uses UIKit's feedback generator instead of a custom
+    /// CHHapticPattern.
+    private let overblowGenerator = UIImpactFeedbackGenerator(style: .heavy)
+
+    func playOverblowImpact() {
+        overblowGenerator.prepare()
+        overblowGenerator.impactOccurred()
+    }
+
     //MARK: Listener for restart haptics engine
     func setupAppLifecycleObservers() {
         NotificationCenter.default.addObserver(

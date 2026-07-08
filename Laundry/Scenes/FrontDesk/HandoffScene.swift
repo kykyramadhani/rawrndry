@@ -116,17 +116,15 @@ class HandoffScene: SKScene {
         packageNode.zPosition = 20
         packageNode.alpha = 0
 
+        // Already sealed by this point (see FoldingScene.completePackaging) — no folded-clothes
+        // sprite peeking through, and the front uses the fully-tied state6 art, not state5's
+        // rope-ready-but-untied look.
         let back = SKSpriteNode(imageNamed: "packagingState5Back")
         back.size = packageSize
         back.zPosition = 0
         packageNode.addChild(back)
 
-        let clothes = SKSpriteNode(imageNamed: "packagingFoldedClothes1")
-        clothes.size = CGSize(width: packageSize.width * 0.8, height: packageSize.height * 0.8)
-        clothes.zPosition = 1
-        packageNode.addChild(clothes)
-
-        let front = SKSpriteNode(imageNamed: "packagingState5Front")
+        let front = SKSpriteNode(imageNamed: "frontdeskPackage")
         front.size = packageSize
         front.zPosition = 2
         packageNode.addChild(front)
@@ -238,7 +236,14 @@ class HandoffScene: SKScene {
         isHandedOff = true
 
         packageNode.run(.move(to: customerNode.position, duration: 0.3)) { [weak self] in
-            self?.completeHandoff()
+            guard let self else { return }
+            // The package is now in the customer's hands — make it disappear rather than
+            // leaving it sitting on top of them for the rest of the scene.
+            self.packageNode.run(.sequence([
+                .group([.fadeOut(withDuration: 0.25), .scale(to: 0.6, duration: 0.25)]),
+                .removeFromParent()
+            ]))
+            self.completeHandoff()
         }
     }
 
