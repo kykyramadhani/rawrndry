@@ -32,6 +32,7 @@ class WashingScene: SKScene {
     private var scrubAmount: CGFloat = 0.0
     private var requiredScrubAmount: CGFloat = 800.0
     private var lastTouchLocation: CGPoint?
+    private var lastTouchTime: TimeInterval = 0
 
     private let basketSize = CGSize(width: 120, height: 120)
     private let pickedClothesSize = CGSize(width: 90, height: 90)
@@ -208,7 +209,11 @@ class WashingScene: SKScene {
                 pickedClothes.isHidden = false
             }
         case .washing:
-            if spreadClothes.contains(location) { lastTouchLocation = location }
+            if spreadClothes.contains(location) {
+                lastTouchLocation = location
+                lastTouchTime = touch.timestamp
+                HapticsManager.shared.startScrubbing()
+            }
         case .clean:
             if spreadClothes.contains(location) {
                 currentState = .draggingClean
@@ -234,16 +239,23 @@ class WashingScene: SKScene {
             if let lastTouch = lastTouchLocation, spreadClothes.contains(location) {
                 let distance = hypot(location.x - lastTouch.x, location.y - lastTouch.y)
                 scrubAmount += distance
+
+                let timeDelta = touch.timestamp - lastTouchTime
+                let velocity = timeDelta > 0 ? distance / CGFloat(timeDelta) : 0
+                lastTouchTime = touch.timestamp
+
                 lastTouchLocation = location
 
                 let progress = min(1.0, scrubAmount / requiredScrubAmount)
                 for stain in activeStains { stain.alpha = 1.0 - progress }
                 AudioManager.shared.playScrubbing()
+                HapticsManager.shared.updateScrubbing(velocity: velocity)
 
                 if progress >= 1.0 {
                     currentState = .clean
                     activeStains.forEach { $0.isHidden = true }
                     AudioManager.shared.stopScrubbing()
+                    HapticsManager.shared.stopScrubbing()
                     showHint(Loc.t(.washingHintClean), on: hintLabel)
                 }
             }
@@ -255,6 +267,7 @@ class WashingScene: SKScene {
         if handleSettingsPopupTouchesEnded() { return }
 
         AudioManager.shared.stopScrubbing()
+        HapticsManager.shared.stopScrubbing()
 
         switch currentState {
         case .draggingDirty:
@@ -310,5 +323,9 @@ class WashingScene: SKScene {
         }
 
         lastTouchLocation = nil
+    }
+
+    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
+        touchesEnded(touches, with: event)
     }
 }
