@@ -51,6 +51,10 @@ struct LaundryItemProgress {
     var isOnWashStone: Bool = false
     var isHungToDry: Bool = false
 
+    /// Which numbered drying art variant (1...4) this item uses across the hanged/blown/
+    /// picked/fallen/basket-pile textures — assigned once per item so it stays consistent.
+    var dryingVariant: Int = 1
+
     var isWashed: Bool { washProgress >= 1 }
     var isDried: Bool { dryProgress >= 1 }
 }
@@ -122,7 +126,11 @@ final class GameState {
         orderType = OrderType.allCases.randomElement() ?? .washOnly
         clothesCount = count
         clothesTypes = (0..<count).map { _ in ClothingType.allCases.randomElement() ?? .clothes }
-        itemProgress = Array(repeating: LaundryItemProgress(), count: count)
+        itemProgress = (0..<count).map { _ in
+            var progress = LaundryItemProgress()
+            progress.dryingVariant = Int.random(in: 1...4)
+            return progress
+        }
         tornItemsCount = 0
         isPackaged = false
         orderGeneratedDay = currentDay

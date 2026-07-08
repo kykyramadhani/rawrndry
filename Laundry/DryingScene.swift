@@ -46,6 +46,14 @@ class DryingScene: SKScene {
     private var fanAccumDistance: CGFloat = 0
     private let fanSwipeDistance: CGFloat = 40
 
+    /// Decorative rope-and-leaf-bundle prop shown next to the leaf tool — hides while the
+    /// player is actively fanning, and never shows at all in microphone mode.
+    private var leafRopeNode: SKSpriteNode?
+
+    private var isOverblowing = false
+    private let blowThreshold: Float = -20
+    private let overblowThreshold: Float = -6
+
     private let itemSize = CGSize(width: 70, height: 90)
     private let blowBarWidth: CGFloat = 200
     private let blowBarHeight: CGFloat = 18
@@ -94,6 +102,7 @@ class DryingScene: SKScene {
             requestMicPermissionAndStart()
         } else {
             addLeafTool()
+            addLeafRopeProp()
             showHint(Loc.t(.dryingHintSwipeLeaf), on: hintLabel)
         }
     }
@@ -104,8 +113,11 @@ class DryingScene: SKScene {
         }
         leafNode?.removeFromParent()
         leafNode = nil
+        leafRopeNode?.removeFromParent()
+        leafRopeNode = nil
         isFanning = false
         lastFanPoint = nil
+        isOverblowing = false
     }
 
     /// Called when the settings popup closes, in case the microphone toggle changed mid-scene.
@@ -115,22 +127,35 @@ class DryingScene: SKScene {
     }
 
     private func addLeafTool() {
-        let leaf = SKSpriteNode(imageNamed: AssetName.UI.leaves)
+        let leaf = SKSpriteNode(imageNamed: "dryingLeafFan")
         leaf.name = "leafTool"
-        leaf.size = CGSize(width: 46, height: 52)
+        leaf.size = CGSize(width: 64, height: 54)
         leaf.position = CGPoint(x: size.width * 0.5, y: ropeY - 20)
         leaf.zPosition = 40
         addChild(leaf)
         leafNode = leaf
     }
 
+    /// Sits on the ground, centered under the rope — clear of the fan and the hanging rack so it
+    /// doesn't compete with either, matching the separated look of the reference art.
+    private func addLeafRopeProp() {
+        let prop = SKSpriteNode(imageNamed: "dryingLeafRope")
+        prop.size = CGSize(width: 66, height: 66)
+        prop.position = CGPoint(x: size.width * 0.5, y: ropeY - 130)
+        prop.zPosition = 4
+        addChild(prop)
+        leafRopeNode = prop
+    }
+
     // MARK: - Setup
 
+    /// dryingRope.png is baked at the same canvas size as dryingBackground.png, with the rope
+    /// already drawn in place — so it's overlaid full-screen rather than stretched into a thin bar.
     private func addRope() {
         let rope = SKSpriteNode(imageNamed: "dryingRope")
-        rope.size = CGSize(width: size.width * 0.75, height: 8)
-        rope.position = CGPoint(x: size.width * 0.55, y: ropeY)
-        rope.zPosition = 3
+        rope.position = CGPoint(x: size.width / 2, y: size.height / 2)
+        rope.size = size
+        rope.zPosition = 0
         addChild(rope)
     }
 
@@ -141,7 +166,7 @@ class DryingScene: SKScene {
         basketNode.zPosition = 2
         addChild(basketNode)
 
-        basketPiles = SKSpriteNode(imageNamed: "dryingBasketPiles")
+        basketPiles = SKSpriteNode(imageNamed: "dryingBasketPiles1")
         basketPiles.size = CGSize(width: 80, height: 46)
         basketPiles.position = CGPoint(x: basketPosition.x, y: basketPosition.y + 18)
         basketPiles.zPosition = 3
@@ -153,7 +178,7 @@ class DryingScene: SKScene {
         dryBasketNode.zPosition = 2
         addChild(dryBasketNode)
 
-        dryBasketPiles = SKSpriteNode(imageNamed: "dryingBasketPiles")
+        dryBasketPiles = SKSpriteNode(imageNamed: "dryingBasketPiles1")
         dryBasketPiles.size = CGSize(width: 80, height: 46)
         dryBasketPiles.position = CGPoint(x: dryBasketPosition.x, y: dryBasketPosition.y + 18)
         dryBasketPiles.zPosition = 3
@@ -161,7 +186,7 @@ class DryingScene: SKScene {
     }
 
     private func setupPickedClothesNode() {
-        pickedClothes = SKSpriteNode(imageNamed: "washingPickedClothes1")
+        pickedClothes = SKSpriteNode(imageNamed: "dryingClothesPicked1")
         pickedClothes.size = itemSize
         pickedClothes.zPosition = 30
         pickedClothes.isHidden = true
@@ -183,7 +208,8 @@ class DryingScene: SKScene {
     }
 
     private func makeHungItemNode(index: Int) -> SKSpriteNode {
-        let node = SKSpriteNode(imageNamed: "dryingClothesHanged")
+        let variant = GameState.shared.itemProgress[index].dryingVariant
+        let node = SKSpriteNode(imageNamed: "dryingClothesHanged\(variant)")
         node.size = itemSize
         node.name = "item-\(index)"
         node.zPosition = 5
@@ -216,25 +242,22 @@ class DryingScene: SKScene {
         GameState.shared.itemProgress.indices.filter { $0 != excluding && GameState.shared.itemProgress[$0].isHungToDry }.count
     }
 
-    /// Items that have been washed but not yet hung or finished drying — the wet pile.
-    private func countBasketItems() -> Int {
-        GameState.shared.itemProgress.indices.filter {
-            let progress = GameState.shared.itemProgress[$0]
-            return progress.isWashed && !progress.isHungToDry && !progress.isDried
-        }.count
-    }
-
-    /// Items that finished drying and were dragged off the rope into the dry basket.
-    private func countDryBasketItems() -> Int {
-        GameState.shared.itemProgress.indices.filter {
-            let progress = GameState.shared.itemProgress[$0]
-            return progress.isDried && !progress.isHungToDry
-        }.count
-    }
-
     private func updateBasketPilesVisibility() {
-        basketPiles.isHidden = countBasketItems() == 0
-        dryBasketPiles.isHidden = countDryBasketItems() == 0
+        if let index = GameState.shared.itemProgress.firstIndex(where: {
+            $0.isWashed && !$0.isHungToDry && !$0.isDried
+        }) {
+            basketPiles.texture = SKTexture(imageNamed: "dryingBasketPiles\(GameState.shared.itemProgress[index].dryingVariant)")
+            basketPiles.isHidden = false
+        } else {
+            basketPiles.isHidden = true
+        }
+
+        if let index = GameState.shared.itemProgress.firstIndex(where: { $0.isDried && !$0.isHungToDry }) {
+            dryBasketPiles.texture = SKTexture(imageNamed: "dryingBasketPiles\(GameState.shared.itemProgress[index].dryingVariant)")
+            dryBasketPiles.isHidden = false
+        } else {
+            dryBasketPiles.isHidden = true
+        }
     }
 
     /// Same look as the Settings popup's sliders (slideBase track + amber fill), minus the thumb —
@@ -354,13 +377,21 @@ class DryingScene: SKScene {
     }
 
     private func handleMicPower(_ power: Float) {
-        if power > -20 {
+        if power > overblowThreshold {
+            isBlowing = false
+            if !isOverblowing {
+                isOverblowing = true
+                dropOverblownItems()
+            }
+        } else if power > blowThreshold {
+            isOverblowing = false
             if !isBlowing {
                 isBlowing = true
                 advanceDrying()
             }
         } else {
             isBlowing = false
+            isOverblowing = false
         }
     }
 
@@ -398,12 +429,47 @@ class DryingScene: SKScene {
 
         for index in indices {
             guard let node = itemNodes[index] else { continue }
-            node.texture = SKTexture(imageNamed: "dryingClothesBlowed")
+            let variant = GameState.shared.itemProgress[index].dryingVariant
+            node.texture = SKTexture(imageNamed: "dryingClothesBlowed\(variant)")
             node.run(sway) {
                 guard GameState.shared.itemProgress[index].isHungToDry else { return }
-                node.texture = SKTexture(imageNamed: "dryingClothesHanged")
+                node.texture = SKTexture(imageNamed: "dryingClothesHanged\(variant)")
             }
         }
+    }
+
+    /// Blowing too hard drops any still-wet hung items back into the wet basket — a real penalty,
+    /// distinct from the gentle sway a normal-strength blow triggers.
+    private func dropOverblownItems() {
+        let fallingIndices = GameState.shared.itemProgress.indices.filter {
+            GameState.shared.itemProgress[$0].isHungToDry && GameState.shared.itemProgress[$0].dryProgress < 1
+        }
+        guard !fallingIndices.isEmpty else { return }
+
+        showStatus("Too hard! It fell!")
+        run(.sequence([.wait(forDuration: 1.0), .run { [weak self] in self?.hideStatus() }]))
+
+        for index in fallingIndices {
+            guard let node = itemNodes[index] else { continue }
+            let variant = GameState.shared.itemProgress[index].dryingVariant
+            node.texture = SKTexture(imageNamed: "dryingClothesFallen\(variant)")
+            node.zPosition = 4
+
+            let drop = SKAction.group([
+                .moveBy(x: 0, y: -60, duration: 0.35),
+                .fadeOut(withDuration: 0.35),
+                .rotate(byAngle: .pi / 6, duration: 0.35)
+            ])
+            node.run(.sequence([drop, .removeFromParent()]))
+            itemNodes[index] = nil
+
+            GameState.shared.itemProgress[index].isHungToDry = false
+            GameState.shared.itemProgress[index].dryProgress = 0
+        }
+
+        relayoutHungItems()
+        updateBasketPilesVisibility()
+        updateBlowBar()
     }
 
     /// Bar reflects actual drying progress (average of all hung items) toward 100% — not raw mic volume.
@@ -474,6 +540,7 @@ class DryingScene: SKScene {
             lastFanPoint = location
             fanAccumDistance = 0
             leafNode?.position = location
+            leafRopeNode?.isHidden = true
         }
     }
 
@@ -506,6 +573,7 @@ class DryingScene: SKScene {
         if isFanning {
             isFanning = false
             lastFanPoint = nil
+            leafRopeNode?.isHidden = false
             return
         }
 
@@ -519,6 +587,7 @@ class DryingScene: SKScene {
         if isFanning {
             isFanning = false
             lastFanPoint = nil
+            leafRopeNode?.isHidden = false
             return
         }
 
@@ -539,6 +608,7 @@ class DryingScene: SKScene {
             itemNodes[index] = nil
         }
 
+        pickedClothes.texture = SKTexture(imageNamed: "dryingClothesPicked\(GameState.shared.itemProgress[index].dryingVariant)")
         pickedClothes.position = location
         pickedClothes.isHidden = false
         updateBasketPilesVisibility()

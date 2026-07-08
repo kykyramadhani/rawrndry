@@ -27,7 +27,11 @@
       "Bash(xcodebuild -scheme Laundry -destination 'generic/platform=iOS Simulator' clean build)",
       "Bash(/bin/bash -c ' *)",
       "Bash(md5 Laundry/bg-music.wav Laundry/Asset/Audio/*.wav)",
-      "Bash(xcodebuild -project Laundry.xcodeproj -scheme Laundry -destination 'generic/platform=iOS Simulator' build CODE_SIGNING_ALLOWED=NO)"
+      "Bash(xcodebuild -project Laundry.xcodeproj -scheme Laundry -destination 'generic/platform=iOS Simulator' build CODE_SIGNING_ALLOWED=NO)",
+      "Bash(echo \"exit code: $?\")",
+      "Bash(git ls-tree *)",
+      "Bash(git restore *)",
+      "Bash(git branch *)"
     ],
     "additionalDirectories": [
       "/Users/auliaguss/Projects/Games/Laundry/Laundry/Assets.xcassets/dress.imageset"

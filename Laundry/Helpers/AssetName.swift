@@ -26,7 +26,6 @@ enum AssetName {
         static let btnSecondary = "btnSecondary"
         static let slider = "slider"
         static let slideBase = "slideBase"
-        static let leaves = "leaves"
     }
     
     enum Character {
