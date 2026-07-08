@@ -26,7 +26,6 @@ class CustomerScene: SKScene {
         self.anchorPoint = CGPoint(x: 0.5, y: 0.5)
         
         currentCustomer = CustomerManager.shared.getNextCustomer()
-        
         if currentCustomer == nil {
             CustomerManager.shared.generateCustomers(forDay: DayManager.shared.currentDay)
             currentCustomer = CustomerManager.shared.getNextCustomer()
@@ -53,13 +52,12 @@ class CustomerScene: SKScene {
         addChild(background)
     }
     
-    // MARK: - Setup UI Elements
     private func setupUI() {
         let topY = self.size.height * 0.40
         var currentX = -self.size.width * 0.45
         let horizontalSpacing: CGFloat = 15
         
-        // --- 1. Day Indicator ---
+        // 1. Day Indicator
         dayHud = SKSpriteNode(imageNamed: AssetName.UI.hudIndicator)
         dayHud.position = CGPoint(x: currentX + dayHud.size.width / 2, y: topY)
         dayHud.zPosition = 100
@@ -87,7 +85,6 @@ class CustomerScene: SKScene {
         
         currentX += dayHud.size.width + horizontalSpacing
         
-        // --- 2. Currency Indicator ---
         currencyHud = SKSpriteNode(imageNamed: AssetName.UI.hudIndicator)
         currencyHud.position = CGPoint(x: currentX + currencyHud.size.width / 2, y: topY)
         currencyHud.zPosition = 100
@@ -113,14 +110,12 @@ class CustomerScene: SKScene {
         currencyContent.zPosition = 101
         currencyHud.addChild(currencyContent)
         
-        // --- 3. Instruction Button ---
         instructionBtn = SKSpriteNode(imageNamed: AssetName.UI.btnInstruction)
         instructionBtn.setScale(0.8)
         instructionBtn.position = CGPoint(x: self.size.width * 0.43, y: topY)
         instructionBtn.zPosition = 100
         addChild(instructionBtn)
         
-        // --- 4. Chevron Button ---
         chevronBtn = SKSpriteNode(imageNamed: AssetName.UI.chevronRight)
         chevronBtn.setScale(0.8)
         chevronBtn.position = CGPoint(x: self.size.width * 0.43, y: 0)
@@ -242,19 +237,22 @@ class CustomerScene: SKScene {
         fly.run(hover)
     }
     
+    private func transitionToWashingScene() {
+        let washingScene = WashingScene(size: self.size)
+        washingScene.itemsToWash = self.currentCustomer?.itemsToWash ?? []
+        SceneManager.shared.transition(to: washingScene, from: self.view)
+    }
+    
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let touch = touches.first else { return }
         let location = touch.location(in: self)
         
         if chevronBtn.contains(location) {
             self.isUserInteractionEnabled = false
-            
             let scaleDown = SKAction.scale(to: 0.7, duration: 0.1)
             let scaleUp = SKAction.scale(to: 0.8, duration: 0.1)
-            
             chevronBtn.run(SKAction.sequence([scaleDown, scaleUp])) {
-                let washingScene = WashingScene(size: self.size)
-                SceneManager.shared.transition(to: washingScene, from: self.view)
+                self.transitionToWashingScene()
             }
         }
         
@@ -266,15 +264,12 @@ class CustomerScene: SKScene {
         
         if laundryBag.contains(location) {
             self.isUserInteractionEnabled = false
-            
             let currentScale = laundryBag.xScale
             let scaleDown = SKAction.scale(to: currentScale * 0.9, duration: 0.1)
             let scaleUp = SKAction.scale(to: currentScale, duration: 0.1)
-            let bounce = SKAction.sequence([scaleDown, scaleUp])
             
-            laundryBag.run(bounce) {
-                let washingScene = WashingScene(size: self.size)
-                SceneManager.shared.transition(to: washingScene, from: self.view)
+            laundryBag.run(SKAction.sequence([scaleDown, scaleUp])) {
+                self.transitionToWashingScene()
             }
         }
     }

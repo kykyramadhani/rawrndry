@@ -4,6 +4,8 @@
 //
 //  Created by Kyky on 03/07/26.
 //
+
+
 import Foundation
 
 enum StainLevel {
@@ -12,8 +14,8 @@ enum StainLevel {
 }
 
 enum SoapFragrance: String {
-    case floral = "Rose"
-    case fruity = "Lemon"
+    case rose = "Rose"
+    case soapFruit = "Soap Fruit"
 }
 
 struct LaundryItem {
@@ -21,6 +23,6 @@ struct LaundryItem {
     let stain: StainLevel
     
     var imageName: String {
-        return "washingClothes\(patternID)"
+        return AssetName.Item.washingClothes(patternID: patternID)
     }
 }

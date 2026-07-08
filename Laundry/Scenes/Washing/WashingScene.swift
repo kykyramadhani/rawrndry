@@ -6,22 +6,26 @@ class WashingScene: SKScene {
     private var basketPiles: SKSpriteNode!
     private var pickedClothes: SKSpriteNode!
     private var spreadClothes: SKSpriteNode!
-    private var dirtStain: SKSpriteNode!
     private var rightBasket: SKSpriteNode!
+    private var rightBasketPiles: SKSpriteNode!
+    
+    private var activeStains: [SKSpriteNode] = []
+
+    var itemsToWash: [LaundryItem] = []
+    private var currentItemIndex: Int = 0
     
     enum WashState {
-        case idle
-        case draggingDirty
-        case washing
-        case clean
-        case draggingClean
+        case idle, draggingDirty, washing, clean, draggingClean
     }
     
     private var currentState: WashState = .idle
     private var scrubAmount: CGFloat = 0.0
-    private let requiredScrubAmount: CGFloat = 800.0
+    private var requiredScrubAmount: CGFloat = 800.0
     private var lastTouchLocation: CGPoint?
     
+    private let basketSize = CGSize(width: 120, height: 120)
+    private let pickedClothesSize = CGSize(width: 90, height: 90)
+    private let spreadClothesSize = CGSize(width: 250, height: 250)
     private let spreadClothesPosition = CGPoint(x: -0.02, y: -0.02)
     
     override func didMove(to view: SKView) {
@@ -34,115 +38,136 @@ class WashingScene: SKScene {
         setupRightBasket()
         setupStationArrows()
 
-        // Tukar Audio
+        updateBasketPile()
+
         AudioManager.shared.stopThemeBGM()
         AudioManager.shared.playRiverAmbience()
     }
     
     private func setupBackground() {
-        let background = SKSpriteNode(imageNamed: "washingBackground.jpg")
+        let background = SKSpriteNode(imageNamed: AssetName.Background.washing)
         background.size = self.size
-        background.position = CGPoint.zero
         background.zPosition = -1
         addChild(background)
     }
     
     private func setupLeftBasket() {
-        leftBasket = SKSpriteNode(imageNamed: "washingBasket.jpg")
-        leftBasket.setScale(0.15)
+        leftBasket = SKSpriteNode(imageNamed: AssetName.Item.washingBasketEmpty)
+        leftBasket.size = basketSize
         leftBasket.position = CGPoint(x: -self.size.width * 0.35, y: -self.size.height * 0.35)
         leftBasket.zPosition = 10
         addChild(leftBasket)
         
-        basketPiles = SKSpriteNode(imageNamed: "washingBasketPiles.png")
+        basketPiles = SKSpriteNode()
         basketPiles.name = "basketPiles"
-        basketPiles.setScale(0.15)
-        basketPiles.position = CGPoint(x: leftBasket.position.x, y: leftBasket.position.y + 10)
+        basketPiles.size = basketSize
+        basketPiles.position = leftBasket.position
         basketPiles.zPosition = 11
         addChild(basketPiles)
     }
     
-    private func setupClothesOnSteps() {
-        pickedClothes = SKSpriteNode(imageNamed: "washingPickedClothes1.jpg")
-        pickedClothes.setScale(0.18)
-        pickedClothes.zPosition = 20
-        pickedClothes.isHidden = true
-        addChild(pickedClothes)
+    private func setupRightBasket() {
+        rightBasket = SKSpriteNode(imageNamed: AssetName.Item.washingBasketEmpty)
+        // Gunakan size langsung
+        rightBasket.size = basketSize
+        rightBasket.position = CGPoint(x: self.size.width * 0.35, y: -self.size.height * 0.35)
+        rightBasket.zPosition = 10
+        addChild(rightBasket)
         
-        spreadClothes = SKSpriteNode(imageNamed: "washingClothes1.jpg")
-        spreadClothes.name = "spreadClothes"
-        spreadClothes.setScale(0.22)
-        spreadClothes.position = CGPoint(x: self.size.width * spreadClothesPosition.x,
-                                         y: self.size.height * spreadClothesPosition.y)
-        spreadClothes.zPosition = 4
-        spreadClothes.isHidden = true
-        addChild(spreadClothes)
-        
-        dirtStain = SKSpriteNode(imageNamed: "washingStain.PNG")
-        dirtStain.setScale(0.5)
-        dirtStain.position = CGPoint(x: 5, y: -5)
-        dirtStain.zPosition = 1
-        spreadClothes.addChild(dirtStain)
+        rightBasketPiles = SKSpriteNode()
+        rightBasketPiles.name = "rightBasketPiles"
+        rightBasketPiles.size = basketSize
+        rightBasketPiles.position = rightBasket.position
+        rightBasketPiles.zPosition = 11
+        rightBasketPiles.isHidden = true
+        addChild(rightBasketPiles)
     }
     
+    private func setupClothesOnSteps() {
+            pickedClothes = SKSpriteNode()
+            pickedClothes.size = pickedClothesSize
+            pickedClothes.zPosition = 20
+            pickedClothes.isHidden = true
+            addChild(pickedClothes)
+            
+            spreadClothes = SKSpriteNode()
+            spreadClothes.name = "spreadClothes"
+            spreadClothes.size = spreadClothesSize
+            spreadClothes.position = CGPoint(x: self.size.width * spreadClothesPosition.x, y: self.size.height * spreadClothesPosition.y)
+            spreadClothes.zPosition = 4
+            spreadClothes.isHidden = true
+            addChild(spreadClothes)
+        }
+    
     private func setupSoaps() {
-        let soap1 = SKSpriteNode(imageNamed: "washingSoap.jpg")
+        let soap1 = SKSpriteNode(imageNamed: AssetName.Item.washingSoap(id: 1))
         soap1.setScale(0.08)
         soap1.position = CGPoint(x: self.size.width * 0.12, y: -self.size.height * 0.28)
         soap1.zPosition = 15
         addChild(soap1)
         
-        let soap2 = SKSpriteNode(imageNamed: "washingSoap.jpg")
+        let soap2 = SKSpriteNode(imageNamed: AssetName.Item.washingSoap(id: 2))
         soap2.setScale(0.08)
         soap2.position = CGPoint(x: self.size.width * 0.20, y: -self.size.height * 0.27)
         soap2.zPosition = 15
         addChild(soap2)
     }
     
-    private func setupRightBasket() {
-        rightBasket = SKSpriteNode(imageNamed: "washingBasket.jpg")
-        rightBasket.setScale(0.15)
-        rightBasket.position = CGPoint(x: self.size.width * 0.35, y: -self.size.height * 0.35)
-        rightBasket.zPosition = 10
-        addChild(rightBasket)
-    }
+    private func updateBasketPile() {
+            if currentItemIndex < itemsToWash.count {
+                let currentItem = itemsToWash[currentItemIndex]
+                
+                basketPiles.texture = SKTexture(imageNamed: AssetName.Item.washingBasketPile(patternID: currentItem.patternID))
+                basketPiles.isHidden = false
+                
+                pickedClothes.texture = SKTexture(imageNamed: AssetName.Item.washingPickedClothes(patternID: currentItem.patternID))
+                pickedClothes.size = pickedClothesSize
+                
+            } else {
+                basketPiles.isHidden = true
+            }
+        }
+    
+    private func setupStains(for item: LaundryItem) {
+            activeStains.forEach { $0.removeFromParent() }
+            activeStains.removeAll()
+            
+            requiredScrubAmount = (item.stain == .hard) ? 1200.0 : 600.0
+            scrubAmount = 0.0
+            
+            let randomStainID = Int.random(in: 1...4)
+            let stain = SKSpriteNode(imageNamed: AssetName.Item.washingStain(id: randomStainID))
+            
+            stain.size = CGSize(width: 60, height: 60)
+            stain.zRotation = CGFloat.random(in: 0...(2 * .pi))
 
-    /// Positioned in this scene's own centered coordinate space (anchorPoint 0.5, 0.5),
-    /// so the shared `addStationArrows` helper — which assumes a bottom-left origin — can't be used directly.
-    private func setupStationArrows() {
-        makeButton(
-            imageNamed: "arrow-left",
-            position: CGPoint(x: -self.size.width * 0.46, y: 0),
-            scale: 0.02,
-            nodeName: "stationLeft"
-        )
-        makeButton(
-            imageNamed: "arrow-right",
-            position: CGPoint(x: self.size.width * 0.46, y: 0),
-            scale: 0.02,
-            nodeName: "stationRight"
-        )
-    }
+            let safeAreaWidth = spreadClothesSize.width * 0.1
+            let safeAreaHeight = spreadClothesSize.height * 0.1
+            
+            let randomX = CGFloat.random(in: -safeAreaWidth...safeAreaWidth)
+            let randomY = CGFloat.random(in: -safeAreaHeight...safeAreaHeight)
+            
+            stain.position = CGPoint(x: randomX, y: randomY)
+            stain.zPosition = 1
+            
+            spreadClothes.addChild(stain)
+            activeStains.append(stain)
+        }
+    
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let touch = touches.first else { return }
         let location = touch.location(in: self)
-
-        if handleStationArrowTap(nodeName: tappedNodeName(at: location), current: .washing) {
-            return
-        }
-
+        
         switch currentState {
         case .idle:
-            if basketPiles.contains(location) {
+            if basketPiles.contains(location) && currentItemIndex < itemsToWash.count {
                 currentState = .draggingDirty
                 pickedClothes.position = location
                 pickedClothes.isHidden = false
             }
         case .washing:
-            if spreadClothes.contains(location) {
-                lastTouchLocation = location
-            }
+            if spreadClothes.contains(location) { lastTouchLocation = location }
         case .clean:
             if spreadClothes.contains(location) {
                 currentState = .draggingClean
@@ -150,52 +175,43 @@ class WashingScene: SKScene {
                 pickedClothes.position = location
                 pickedClothes.isHidden = false
             }
-        default:
-            break
+        default: break
         }
     }
     
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
-            guard let touch = touches.first else { return }
-            let location = touch.location(in: self)
-            
-            switch currentState {
-            case .draggingDirty:
-                pickedClothes.position = location
-                
-            case .washing:
-                if let lastTouch = lastTouchLocation, spreadClothes.contains(location) {
-                    let distance = hypot(location.x - lastTouch.x, location.y - lastTouch.y)
-                    scrubAmount += distance
-                    lastTouchLocation = location
-                    
-                    let progress = min(1.0, scrubAmount / requiredScrubAmount)
-                    dirtStain.alpha = 1.0 - progress
-                    
-                    AudioManager.shared.playScrubbing()
-                    
-                    if progress >= 1.0 {
-                        currentState = .clean
-                        dirtStain.isHidden = true
-                        
-                        AudioManager.shared.stopScrubbing()
-                    }
-                }
-                
-            case .draggingClean:
-                pickedClothes.position = location
-                spreadClothes.isHidden = true
-                
-            default:
-                break
-            }
-        }
+        guard let touch = touches.first else { return }
+        let location = touch.location(in: self)
         
-        override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
-            AudioManager.shared.stopScrubbing()
+        switch currentState {
+        case .draggingDirty, .draggingClean:
+            pickedClothes.position = location
             
-            switch currentState {
-            case .draggingDirty:
+        case .washing:
+            if let lastTouch = lastTouchLocation, spreadClothes.contains(location) {
+                let distance = hypot(location.x - lastTouch.x, location.y - lastTouch.y)
+                scrubAmount += distance
+                lastTouchLocation = location
+                
+                let progress = min(1.0, scrubAmount / requiredScrubAmount)
+                for stain in activeStains { stain.alpha = 1.0 - progress }
+                AudioManager.shared.playScrubbing()
+                
+                if progress >= 1.0 {
+                    currentState = .clean
+                    activeStains.forEach { $0.isHidden = true }
+                    AudioManager.shared.stopScrubbing()
+                }
+            }
+        default: break
+        }
+    }
+
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        AudioManager.shared.stopScrubbing()
+        
+        switch currentState {
+        case .draggingDirty:
                 let rockArea = CGRect(x: -self.size.width * 0.15, y: -self.size.height * 0.15,
                                       width: self.size.width * 0.3, height: self.size.height * 0.3)
                 
@@ -203,41 +219,67 @@ class WashingScene: SKScene {
                     currentState = .washing
                     pickedClothes.isHidden = true
                     
+                    if currentItemIndex < itemsToWash.count {
+                        let currentItem = itemsToWash[currentItemIndex]
+                        spreadClothes.texture = SKTexture(imageNamed: currentItem.imageName)
+                        spreadClothes.size = spreadClothesSize
+                        setupStains(for: currentItem)
+                    }
+                    
                     spreadClothes.isHidden = false
-                    dirtStain.isHidden = false
-                    dirtStain.alpha = 1.0
+                    activeStains.forEach { $0.isHidden = false; $0.alpha = 1.0 }
                     scrubAmount = 0.0
                 } else {
                     pickedClothes.isHidden = true
                     currentState = .idle
                 }
+            
+        case .draggingClean:
+            if rightBasket.contains(pickedClothes.position) {
+                pickedClothes.isHidden = true
+                currentState = .idle
                 
-            case .washing:
-                lastTouchLocation = nil
+
+                let washedItem = itemsToWash[currentItemIndex]
+                rightBasketPiles.texture = SKTexture(imageNamed: AssetName.Item.washingBasketPile(patternID: washedItem.patternID))
+                rightBasketPiles.isHidden = false
                 
-            case .draggingClean:
-                if rightBasket.contains(pickedClothes.position) {
-                    pickedClothes.isHidden = true
-                    currentState = .idle
-                    
-                    spreadClothes.position = CGPoint(x: self.size.width * spreadClothesPosition.x,
-                                                     y: self.size.height * spreadClothesPosition.y)
-                    spreadClothes.zPosition = 4
-                    
-                } else {
-                    pickedClothes.isHidden = true
-                    spreadClothes.isHidden = false
-                    
-                    spreadClothes.position = CGPoint(x: self.size.width * spreadClothesPosition.x,
-                                                     y: self.size.height * spreadClothesPosition.y)
-                    spreadClothes.zPosition = 4
-                    currentState = .clean
+                spreadClothes.position = CGPoint(x: self.size.width * spreadClothesPosition.x,
+                                                 y: self.size.height * spreadClothesPosition.y)
+                spreadClothes.zPosition = 4
+                
+                // Maju ke baju berikutnya (FIFO)
+                currentItemIndex += 1
+                updateBasketPile()
+                
+                if currentItemIndex >= itemsToWash.count {
+                    print("✅ Cucian Selesai Semua!")
                 }
                 
-            default:
-                break
+            } else {
+                pickedClothes.isHidden = true
+                spreadClothes.isHidden = false
+                currentState = .clean
             }
             
-            lastTouchLocation = nil
+        default: break
+        }
+        
+        lastTouchLocation = nil
+    }
+    
+    private func setupStationArrows() {
+            makeButton(
+                imageNamed: "arrow-left",
+                position: CGPoint(x: -self.size.width * 0.46, y: 0),
+                scale: 0.02,
+                nodeName: "stationLeft"
+            )
+            makeButton(
+                imageNamed: "arrow-right",
+                position: CGPoint(x: self.size.width * 0.46, y: 0),
+                scale: 0.02,
+                nodeName: "stationRight"
+            )
         }
 }
