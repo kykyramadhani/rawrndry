@@ -54,12 +54,14 @@ class WashingScene: SKScene {
 
         helpButton = makeButton(
             imageNamed: AssetName.UI.btnInstruction,
-            position: CGPoint(x: size.width * 0.93, y: size.height * 0.90),
+            position: CGPoint(x: size.width * 0.85, y: size.height * 0.90),
             scale: 0.8,
             nodeName: "help"
         )
 
-        hintLabel = makeHintLabel(position: CGPoint(x: size.width / 2, y: size.height * 0.85))
+        hintLabel = makeHintLabel(position: CGPoint(x: size.width / 2, y: size.height * 0.08))
+
+        addSettingsButton()
 
         AudioManager.shared.stopThemeBGM()
         AudioManager.shared.playRiverAmbience()
@@ -191,13 +193,15 @@ class WashingScene: SKScene {
         let location = touch.location(in: self)
         let name = tappedNodeName(at: location)
 
+        if handleSettingsPopupTouchesBegan(at: location) { return }
         if handleTipPopupTap(at: location) { return }
 
         if handleStationArrowTap(nodeName: name, current: .washing) { return }
+        if handleSettingsButtonTap(nodeName: name) { return }
 
         if name == "help" {
             runButtonTapAnimation(on: helpButton) {
-                self.showTipPopup(text: "Drag the clothes from the dirty piles and scrub it, then put in the clean piles")
+                self.showTipPopup(text: Loc.t(.infoWashing))
             }
             return
         }
@@ -225,6 +229,8 @@ class WashingScene: SKScene {
         guard let touch = touches.first else { return }
         let location = touch.location(in: self)
 
+        if handleSettingsPopupTouchesMoved(at: location) { return }
+
         switch interaction {
         case .draggingFromPile(let index):
             itemNodes[index].position = location
@@ -244,7 +250,7 @@ class WashingScene: SKScene {
             if progress.isWashed {
                 stainOverlays[activeIndex]?.isHidden = true
                 AudioManager.shared.stopScrubbing()
-                showHint("Clean! Drag it to the basket!", on: hintLabel)
+                showHint(Loc.t(.washingHintClean), on: hintLabel)
             }
 
         case .draggingFromStone:
@@ -256,6 +262,8 @@ class WashingScene: SKScene {
     }
 
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        if handleSettingsPopupTouchesEnded() { return }
+
         AudioManager.shared.stopScrubbing()
         guard let touch = touches.first else { return }
         let location = touch.location(in: self)
@@ -310,7 +318,7 @@ class WashingScene: SKScene {
             activeIndex = nil
 
             moveItemIntoCleanBasket(index: index)
-            showHint("Nice and clean!", on: hintLabel)
+            showHint(Loc.t(.washingHintNiceClean), on: hintLabel)
         } else {
             itemNodes[index].run(.move(to: stoneCenter, duration: 0.2))
         }

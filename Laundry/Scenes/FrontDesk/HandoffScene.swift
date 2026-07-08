@@ -12,8 +12,6 @@ class HandoffScene: SKScene {
     private var bubbleLabel: SKLabelNode!
 
     // UI Nodes
-    private var chevronBtn: SKSpriteNode!
-    private var chevronLeftBtn: SKSpriteNode!
     private var dayHud: SKSpriteNode!
     private var currencyHud: SKSpriteNode!
     private var instructionBtn: SKSpriteNode!
@@ -75,22 +73,13 @@ class HandoffScene: SKScene {
         // --- Instruction Button ---
         instructionBtn = SKSpriteNode(imageNamed: AssetName.UI.btnInstruction)
         instructionBtn.setScale(0.8)
-        instructionBtn.position = CGPoint(x: self.size.width * 0.43, y: topY)
+        instructionBtn.position = CGPoint(x: self.size.width * 0.35, y: topY)
         instructionBtn.zPosition = 100
         addChild(instructionBtn)
 
-        // --- Chevron Buttons ---
-        chevronBtn = SKSpriteNode(imageNamed: AssetName.UI.chevronRight)
-        chevronBtn.setScale(0.8)
-        chevronBtn.position = CGPoint(x: self.size.width * 0.43, y: 0)
-        chevronBtn.zPosition = 100
-        addChild(chevronBtn)
+        // No chevrons here — handing off the package is the only action on this screen.
 
-        chevronLeftBtn = SKSpriteNode(imageNamed: AssetName.UI.chevronLeft)
-        chevronLeftBtn.setScale(0.8)
-        chevronLeftBtn.position = CGPoint(x: -self.size.width * 0.43, y: 0)
-        chevronLeftBtn.zPosition = 100
-        addChild(chevronLeftBtn)
+        addSettingsButton()
     }
 
     private func setupCustomer() {
@@ -166,7 +155,6 @@ class HandoffScene: SKScene {
         bubbleContainer.addChild(bubbleBg)
 
         bubbleLabel = SKLabelNode(fontNamed: AssetName.Font.comica)
-        bubbleLabel.text = (thankYouTexts.randomElement() ?? "THANK YOU!").uppercased()
         bubbleLabel.fontSize = 32
         bubbleLabel.fontColor = plainTextBrown
         bubbleLabel.verticalAlignmentMode = .center
@@ -178,6 +166,8 @@ class HandoffScene: SKScene {
         addChild(bubbleContainer)
     }
 
+    /// The customer arrives silently — no speech bubble — and only speaks once the package
+    /// is actually handed over (see `completeHandoff`).
     private func animateArrival() {
         let walkIn = SKAction.moveTo(x: self.size.width * finalCustomerPosition.x, duration: 1.0)
         walkIn.timingMode = .easeOut
@@ -186,17 +176,11 @@ class HandoffScene: SKScene {
         let packageDrop = SKAction.moveBy(x: 0, y: -20, duration: 0.2)
         let packageSpawn = SKAction.group([packageAppear, packageDrop])
 
-        let popUp = SKAction.scale(to: 1.0, duration: 0.3)
-        let popBounce = SKAction.scale(to: 0.95, duration: 0.1)
-        let bubbleAnim = SKAction.sequence([popUp, popBounce, SKAction.scale(to: 1.0, duration: 0.1)])
-
         customerNode.run(SKAction.sequence([walkIn]))
 
         let sceneAnimations = SKAction.sequence([
             SKAction.wait(forDuration: 1.0),
-            SKAction.run { self.packageNode.run(packageSpawn) },
-            SKAction.wait(forDuration: 0.3),
-            SKAction.run { self.bubbleContainer.run(bubbleAnim) }
+            SKAction.run { self.packageNode.run(packageSpawn) }
         ])
 
         self.run(sceneAnimations)
@@ -206,24 +190,16 @@ class HandoffScene: SKScene {
         guard let touch = touches.first else { return }
         let location = touch.location(in: self)
 
+        if handleSettingsPopupTouchesBegan(at: location) { return }
         if handleTipPopupTap(at: location) { return }
         if handleRewardPopupTap(at: location) { return }
+        if handleSettingsButtonTap(nodeName: tappedNodeName(at: location)) { return }
 
         if instructionBtn.contains(location) {
             let scaleDown = SKAction.scale(to: 0.7, duration: 0.1)
             let scaleUp = SKAction.scale(to: 0.8, duration: 0.1)
             instructionBtn.run(SKAction.sequence([scaleDown, scaleUp]))
-            showTipPopup(text: "Drag the finished package to the customer")
-            return
-        }
-
-        if !isHandedOff, chevronLeftBtn.contains(location) {
-            let scaleDown = SKAction.scale(to: 0.7, duration: 0.1)
-            let scaleUp = SKAction.scale(to: 0.8, duration: 0.1)
-            chevronLeftBtn.run(SKAction.sequence([scaleDown, scaleUp])) {
-                let foldingScene = FoldingScene(size: self.size)
-                SceneManager.shared.transition(to: foldingScene, from: self.view)
-            }
+            showTipPopup(text: Loc.t(.infoHandoff))
             return
         }
 
@@ -233,12 +209,18 @@ class HandoffScene: SKScene {
     }
 
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard isDraggingPackage, let touch = touches.first else { return }
+        guard let touch = touches.first else { return }
         let location = touch.location(in: self)
+
+        if handleSettingsPopupTouchesMoved(at: location) { return }
+
+        guard isDraggingPackage else { return }
         packageNode.position = CGPoint(x: location.x + dragOffset.x, y: location.y + dragOffset.y)
     }
 
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        if handleSettingsPopupTouchesEnded() { return }
+
         guard isDraggingPackage else { return }
         isDraggingPackage = false
 
@@ -259,8 +241,6 @@ class HandoffScene: SKScene {
     private func handOffPackage() {
         isHandedOff = true
 
-        playSound("sfx-drop")
-
         packageNode.run(.move(to: customerNode.position, duration: 0.3)) { [weak self] in
             self?.completeHandoff()
         }
@@ -268,7 +248,10 @@ class HandoffScene: SKScene {
 
     private func completeHandoff() {
         bubbleLabel.text = (thankYouTexts.randomElement() ?? "THANK YOU!").uppercased()
-        playSound("sfx-success")
+
+        let popUp = SKAction.scale(to: 1.0, duration: 0.3)
+        let popBounce = SKAction.scale(to: 0.95, duration: 0.1)
+        bubbleContainer.run(.sequence([popUp, popBounce, SKAction.scale(to: 1.0, duration: 0.1)]))
 
         calculateCoins()
 
@@ -289,6 +272,8 @@ class HandoffScene: SKScene {
     // MARK: - Reward popup
 
     private func showRewardPopup() {
+        playSound("complete")
+
         let center = sceneCenter
         let panelSize = CGSize(width: min(size.width * 0.72, 280), height: 300)
 
@@ -393,6 +378,6 @@ class HandoffScene: SKScene {
     }
 
     private func playSound(_ name: String) {
-        run(.playSoundFileNamed("\(name).wav", waitForCompletion: false))
+        AudioManager.shared.playSFX(name)
     }
 }

@@ -81,7 +81,7 @@ extension SKScene {
         dayHud.position = CGPoint(x: currentX + dayHud.size.width / 2, y: topLeftOrigin.y)
         dayHud.zPosition = 100
         addChild(dayHud)
-        addHUDContent(to: dayHud, icon: AssetName.UI.sunIcon, text: "DAY \(day)")
+        addHUDContent(to: dayHud, icon: AssetName.UI.sunIcon, text: "\(Loc.t(.day)) \(day)")
 
         currentX += dayHud.size.width + horizontalSpacing
 
@@ -131,30 +131,52 @@ extension SKScene {
     }
 
     /// A label used for transient tips/hints — starts invisible; call `showHint(_:on:)` to display it.
+    /// White text over a black drop-shadow copy (stashed in userData) so it reads over any background.
     @discardableResult
     func makeHintLabel(position: CGPoint, fontSize: CGFloat = 18, maxWidth: CGFloat? = nil) -> SKLabelNode {
+        let shadow = SKLabelNode(fontNamed: "AvenirNext-Bold")
+        shadow.fontSize = fontSize
+        shadow.fontColor = .black
+        shadow.numberOfLines = 0
+        shadow.preferredMaxLayoutWidth = maxWidth ?? size.width * 0.8
+        shadow.position = CGPoint(x: position.x + 2, y: position.y - 2)
+        shadow.zPosition = 19
+        shadow.alpha = 0
+        addChild(shadow)
+
         let label = SKLabelNode(fontNamed: "AvenirNext-Bold")
         label.fontSize = fontSize
-        label.fontColor = .black
+        label.fontColor = .white
         label.numberOfLines = 0
         label.preferredMaxLayoutWidth = maxWidth ?? size.width * 0.8
         label.position = position
         label.zPosition = 20
         label.alpha = 0
+        label.userData = NSMutableDictionary()
+        label.userData?["shadowLabel"] = shadow
         addChild(label)
         return label
     }
 
-    /// Fades the hint label in, holds it, then fades it out.
+    /// Fades the hint label (and its drop-shadow) in, holds it, then fades it out.
     func showHint(_ text: String, on label: SKLabelNode) {
-        label.removeAllActions()
-        label.text = text
-        label.alpha = 0
-        label.run(.sequence([
+        let fade = SKAction.sequence([
             .fadeIn(withDuration: 0.2),
             .wait(forDuration: 2.0),
             .fadeOut(withDuration: 0.4)
-        ]))
+        ])
+
+        label.removeAllActions()
+        label.text = text
+        label.alpha = 0
+        label.run(fade)
+
+        if let shadow = label.userData?["shadowLabel"] as? SKLabelNode {
+            shadow.removeAllActions()
+            shadow.text = text
+            shadow.alpha = 0
+            shadow.run(fade)
+        }
     }
 
     /// The scene's visual center in its own coordinate space, accounting for anchorPoint —

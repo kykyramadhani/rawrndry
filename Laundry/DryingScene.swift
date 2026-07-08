@@ -30,12 +30,21 @@ class DryingScene: SKScene {
     private var helpButton: SKSpriteNode!
     private var hintLabel: SKLabelNode!
     private var statusLabel: SKLabelNode!
-    private var blowBarFill: SKSpriteNode!
+    private var blowBarFill: SKShapeNode!
     private var blowPercentLabel: SKLabelNode!
 
     private let micEngine = AVAudioEngine()
     private var micPermissionGranted = false
+    private var micEngineStarted = false
     private var isBlowing = false
+
+    /// The leaf tool shown instead of the mic UI when Settings has the microphone turned off —
+    /// swipe it across the rope to dry clothes instead of blowing.
+    private var leafNode: SKSpriteNode?
+    private var isFanning = false
+    private var lastFanPoint: CGPoint?
+    private var fanAccumDistance: CGFloat = 0
+    private let fanSwipeDistance: CGFloat = 40
 
     private let itemSize = CGSize(width: 70, height: 90)
     private let blowBarWidth: CGFloat = 200
@@ -62,18 +71,57 @@ class DryingScene: SKScene {
 
         helpButton = makeButton(
             imageNamed: AssetName.UI.btnInstruction,
-            position: CGPoint(x: size.width * 0.93, y: size.height * 0.90),
+            position: CGPoint(x: size.width * 0.85, y: size.height * 0.90),
             scale: 0.8,
             nodeName: "help"
         )
 
-        hintLabel = makeHintLabel(position: CGPoint(x: size.width / 2, y: size.height * 0.32))
+        hintLabel = makeHintLabel(position: CGPoint(x: size.width / 2, y: size.height * 0.08))
 
-        requestMicPermissionAndStart()
+        addSettingsButton()
+
+        setupDryingInput()
     }
 
     override func willMove(from view: SKView) {
-        stopMicEngine()
+        teardownDryingInput()
+    }
+
+    // MARK: - Input mode (microphone vs leaf swipe)
+
+    private func setupDryingInput() {
+        if SettingsManager.shared.microphoneEnabled {
+            requestMicPermissionAndStart()
+        } else {
+            addLeafTool()
+            showHint(Loc.t(.dryingHintSwipeLeaf), on: hintLabel)
+        }
+    }
+
+    private func teardownDryingInput() {
+        if micEngineStarted {
+            stopMicEngine()
+        }
+        leafNode?.removeFromParent()
+        leafNode = nil
+        isFanning = false
+        lastFanPoint = nil
+    }
+
+    /// Called when the settings popup closes, in case the microphone toggle changed mid-scene.
+    private func refreshDryingInputMode() {
+        teardownDryingInput()
+        setupDryingInput()
+    }
+
+    private func addLeafTool() {
+        let leaf = SKSpriteNode(imageNamed: AssetName.UI.leaves)
+        leaf.name = "leafTool"
+        leaf.size = CGSize(width: 46, height: 52)
+        leaf.position = CGPoint(x: size.width * 0.5, y: ropeY - 20)
+        leaf.zPosition = 40
+        addChild(leaf)
+        leafNode = leaf
     }
 
     // MARK: - Setup
@@ -189,20 +237,22 @@ class DryingScene: SKScene {
         dryBasketPiles.isHidden = countDryBasketItems() == 0
     }
 
+    /// Same look as the Settings popup's sliders (slideBase track + amber fill), minus the thumb —
+    /// this one's a read-only progress display, not a control.
     private func addBlowBar() {
-        let bg = SKSpriteNode(imageNamed: "progress-bar-bg")
+        let bg = SKSpriteNode(imageNamed: AssetName.UI.slideBase)
         bg.size = CGSize(width: blowBarWidth, height: blowBarHeight)
         bg.position = CGPoint(x: size.width / 2, y: size.height * 0.12)
         bg.zPosition = 10
         addChild(bg)
 
-        let fill = SKSpriteNode(imageNamed: "progress-bar-fill")
-        fill.anchorPoint = CGPoint(x: 0, y: 0.5)
-        fill.size = CGSize(width: 0, height: blowBarHeight - 4)
-        fill.position = CGPoint(x: -blowBarWidth / 2, y: 0)
+        let fill = SKShapeNode()
+        fill.fillColor = sliderFillColor
+        fill.strokeColor = .clear
         fill.zPosition = 11
         bg.addChild(fill)
         blowBarFill = fill
+        setBlowBarFillPath(fraction: 0)
 
         let label = SKLabelNode(fontNamed: "AvenirNext-Bold")
         label.text = "0%"
@@ -213,6 +263,17 @@ class DryingScene: SKScene {
         label.zPosition = 12
         bg.addChild(label)
         blowPercentLabel = label
+    }
+
+    private func setBlowBarFillPath(fraction: CGFloat) {
+        let fillHeight = blowBarHeight - 6
+        let filledWidth = blowBarWidth * max(0, min(1, fraction))
+        blowBarFill.path = CGPath(
+            roundedRect: CGRect(x: -blowBarWidth / 2, y: -fillHeight / 2, width: filledWidth, height: fillHeight),
+            cornerWidth: fillHeight / 2,
+            cornerHeight: fillHeight / 2,
+            transform: nil
+        )
     }
 
     private func addStatusLabel() {
@@ -235,7 +296,7 @@ class DryingScene: SKScene {
                 if granted {
                     self.startMicEngine()
                 } else {
-                    self.showHint("Microphone access is required to dry clothes — enable it in Settings.", on: self.hintLabel)
+                    self.showHint(Loc.t(.dryingHintMicPermission), on: self.hintLabel)
                 }
             }
         }
@@ -247,7 +308,7 @@ class DryingScene: SKScene {
             try session.setCategory(.record, mode: .measurement)
             try session.setActive(true)
         } catch {
-            showHint("Couldn't start the microphone.", on: hintLabel)
+            showHint(Loc.t(.dryingHintMicStartFailed), on: hintLabel)
             return
         }
 
@@ -260,8 +321,9 @@ class DryingScene: SKScene {
 
         do {
             try micEngine.start()
+            micEngineStarted = true
         } catch {
-            showHint("Couldn't start the microphone.", on: hintLabel)
+            showHint(Loc.t(.dryingHintMicStartFailed), on: hintLabel)
         }
     }
 
@@ -269,6 +331,7 @@ class DryingScene: SKScene {
         micEngine.inputNode.removeTap(onBus: 0)
         micEngine.stop()
         try? AVAudioSession.sharedInstance().setActive(false)
+        micEngineStarted = false
     }
 
     /// Runs on the audio engine's internal thread — keep this cheap and hop to main before touching game state.
@@ -294,16 +357,16 @@ class DryingScene: SKScene {
         if power > -20 {
             if !isBlowing {
                 isBlowing = true
-                handleValidBlow()
+                advanceDrying()
             }
         } else {
             isBlowing = false
         }
     }
 
-    // MARK: - Blow handling
+    // MARK: - Drying progress (advanced by either a mic blow or a leaf swipe)
 
-    private func handleValidBlow() {
+    private func advanceDrying() {
         let dryingIndices = GameState.shared.itemProgress.indices.filter {
             GameState.shared.itemProgress[$0].isHungToDry && GameState.shared.itemProgress[$0].dryProgress < 1
         }
@@ -316,13 +379,11 @@ class DryingScene: SKScene {
             wetOverlays[index]?.isHidden = progress >= 1
         }
 
-        playSound("sfx-blow")
         swayAndFlash(indices: dryingIndices)
         updateBlowBar()
 
         if GameState.shared.isFullyDried {
             showStatus("All dry!")
-            playSound("sfx-success")
             run(.sequence([.wait(forDuration: 1.5), .run { [weak self] in self?.hideStatus() }]))
         }
     }
@@ -349,7 +410,7 @@ class DryingScene: SKScene {
     private func updateBlowBar() {
         let hungProgress = GameState.shared.itemProgress.filter { $0.isHungToDry }.map { $0.dryProgress }
         let fraction = hungProgress.isEmpty ? 0 : hungProgress.reduce(0, +) / CGFloat(hungProgress.count)
-        blowBarFill.size.width = blowBarWidth * fraction
+        setBlowBarFillPath(fraction: fraction)
         blowPercentLabel.text = "\(Int(fraction * 100))%"
     }
 
@@ -365,10 +426,6 @@ class DryingScene: SKScene {
         statusLabel.run(.fadeOut(withDuration: 0.2))
     }
 
-    private func playSound(_ name: String) {
-        run(.playSoundFileNamed("\(name).wav", waitForCompletion: false))
-    }
-
     // MARK: - Touch handling
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -376,16 +433,25 @@ class DryingScene: SKScene {
         let location = touch.location(in: self)
         let name = tappedNodeName(at: location)
 
+        if handleSettingsPopupTouchesBegan(at: location) { return }
         if handleTipPopupTap(at: location) { return }
 
         if handleStationArrowTap(nodeName: name, current: .drying) { return }
+        if handleSettingsButtonTap(nodeName: name, onClose: { [weak self] in self?.refreshDryingInputMode() }) { return }
 
         if name == "help" {
             runButtonTapAnimation(on: helpButton) {
-                self.showTipPopup(
-                    text: "Make the blow sound on your microphone, don't blow too hard",
-                    footnote: "*you can turn off microphone feature on setting button"
-                )
+                if SettingsManager.shared.microphoneEnabled {
+                    self.showTipPopup(
+                        text: Loc.t(.infoDryingMic),
+                        footnote: Loc.t(.infoDryingMicFootnote)
+                    )
+                } else {
+                    self.showTipPopup(
+                        text: Loc.t(.infoDryingLeaf),
+                        footnote: Loc.t(.infoDryingLeafFootnote)
+                    )
+                }
             }
             return
         }
@@ -400,15 +466,49 @@ class DryingScene: SKScene {
         if basketPiles.contains(location) || basketNode.contains(location),
            let index = GameState.shared.itemProgress.firstIndex(where: { $0.isWashed && !$0.isHungToDry && !$0.isDried }) {
             beginDrag(index: index, from: .basket, at: location)
+            return
+        }
+
+        if leafNode != nil {
+            isFanning = true
+            lastFanPoint = location
+            fanAccumDistance = 0
+            leafNode?.position = location
         }
     }
 
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard dragState != nil, let touch = touches.first else { return }
-        pickedClothes.position = touch.location(in: self)
+        guard let touch = touches.first else { return }
+        let location = touch.location(in: self)
+
+        if handleSettingsPopupTouchesMoved(at: location) { return }
+
+        if isFanning {
+            leafNode?.position = location
+            if let last = lastFanPoint {
+                fanAccumDistance += hypot(location.x - last.x, location.y - last.y)
+            }
+            lastFanPoint = location
+            if fanAccumDistance > fanSwipeDistance {
+                fanAccumDistance = 0
+                advanceDrying()
+            }
+            return
+        }
+
+        guard dragState != nil else { return }
+        pickedClothes.position = location
     }
 
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        if handleSettingsPopupTouchesEnded() { return }
+
+        if isFanning {
+            isFanning = false
+            lastFanPoint = nil
+            return
+        }
+
         guard let drag = dragState else { return }
         dragState = nil
         pickedClothes.isHidden = true
@@ -416,6 +516,12 @@ class DryingScene: SKScene {
     }
 
     override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
+        if isFanning {
+            isFanning = false
+            lastFanPoint = nil
+            return
+        }
+
         guard let drag = dragState else { return }
         dragState = nil
         pickedClothes.isHidden = true

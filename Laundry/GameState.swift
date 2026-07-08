@@ -94,6 +94,17 @@ final class GameState {
         }
     }
 
+    /// Whether the clothes have actually reached the basket Folding pulls from — fully washed,
+    /// and also fully dried unless this order skips drying entirely. Gates FoldingScene's basket
+    /// so clothes can't be folded before they're actually clean (and dry, if the order needs it).
+    var isReadyForFolding: Bool {
+        guard isFullyWashed else { return false }
+        switch orderType {
+        case .washOnly: return true
+        case .washAndDry, .washDryIron: return isFullyDried
+        }
+    }
+
     /// Generates a fresh order for the current day if one hasn't been generated yet. Called from
     /// CustomerScene normally, but also as a safety net from WashingScene, since some entry
     /// points (the front-desk flow) jump straight into washing without visiting the order scene.

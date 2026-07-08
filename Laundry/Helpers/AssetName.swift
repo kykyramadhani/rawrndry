@@ -22,6 +22,11 @@ enum AssetName {
         static let btnClose = "btnClose"
         static let iconStarOn = "icon-star-on"
         static let iconStarOff = "icon-star-off"
+        static let btnSettings = "btnSettings"
+        static let btnSecondary = "btnSecondary"
+        static let slider = "slider"
+        static let slideBase = "slideBase"
+        static let leaves = "leaves"
     }
     
     enum Character {

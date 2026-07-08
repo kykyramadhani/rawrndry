@@ -7,7 +7,8 @@ class StartScene: SKScene {
         
         setupBackground()
         setupStartButton()
-        
+        addSettingsButton()
+
         AudioManager.shared.stopRiverAmbience()
         AudioManager.shared.playThemeBGM()
     }
@@ -43,8 +44,12 @@ class StartScene: SKScene {
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let touch = touches.first else { return }
         let location = touch.location(in: self)
+
+        if handleSettingsPopupTouchesBegan(at: location) { return }
+        if handleSettingsButtonTap(nodeName: tappedNodeName(at: location)) { return }
+
         let nodes = self.nodes(at: location)
-        
+
         for node in nodes {
             if node.name == "startButton" {
                 animateButtonThenStart(node: node)
@@ -54,6 +59,15 @@ class StartScene: SKScene {
                 break
             }
         }
+    }
+
+    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard let touch = touches.first else { return }
+        _ = handleSettingsPopupTouchesMoved(at: touch.location(in: self))
+    }
+
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        _ = handleSettingsPopupTouchesEnded()
     }
     
     private func animateButtonThenStart(node: SKNode) {

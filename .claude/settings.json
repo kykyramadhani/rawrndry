@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(run)",
+      "Skill(run:*)",
+      "Bash(sips -g pixelWidth -g pixelHeight /Users/auliaguss/Projects/Games/Laundry/Laundry/Assets.xcassets/main-button.imageset/main-button.png)",
+      "Bash(find . -iname \"*close*.imageset\" -o -iname \"*btnx*.imageset\" -o -iname \"*cancel*.imageset\")",
+      "Bash(find . -iname \"*dialog*.imageset\" -o -iname \"*popup*.imageset\" -o -iname \"*panel*.imageset\" -o -iname \"*wood*.imageset\" -o -iname \"*box*.imageset\" -o -iname \"*modal*.imageset\")",
+      "Bash(grep -rln \"EndScene\\(\" .)",
+      "Bash(grep -rn \"EndScene\\(\" .)",
+      "Bash(sips -g pixelWidth -g pixelHeight \"Asset/Assets.xcassets/btnClose.imageset\"/*.png)",
+      "Bash(sips -g pixelWidth -g pixelHeight \"Asset/Assets.xcassets/popUpFrame.imageset\"/*.png)",
+      "Bash(sips -g pixelWidth -g pixelHeight /Users/auliaguss/Projects/Games/Laundry/Laundry/Assets.xcassets/reward-card.imageset/completeBenchmark.png)",
+      "Bash(grep '\\\\.swift$')",
+      "Bash(xcodebuild -project Laundry.xcodeproj -scheme Laundry -destination 'generic/platform=iOS Simulator' -showBuildSettings)",
+      "Bash(xcodebuild -project Laundry.xcodeproj -scheme Laundry -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 16' build)",
+      "Bash(xcodebuild -project Laundry.xcodeproj -scheme Laundry -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 17' build)",
+      "Bash(rm -rf /Users/auliaguss/Projects/Games/Laundry/Laundry/Assets.xcassets/dress.imageset)",
+      "Bash(file /Users/auliaguss/Projects/Games/Laundry/Laundry/Assets.xcassets/washingSoap.imageset/*.png)",
+      "Bash(file /Users/auliaguss/Projects/Games/Laundry/Laundry/Asset/Assets.xcassets/washingSoap.imageset/*.png)",
+      "Bash(xcodebuild -project Laundry.xcodeproj -scheme Laundry -sdk iphonesimulator -configuration Debug build)",
+      "Bash(xargs -I{} echo {})",
+      "Bash(xcodebuild -scheme Laundry -destination 'generic/platform=iOS Simulator' build)",
+      "Bash(open -a Simulator)",
+      "Bash(echo \"---exit:$?---\")",
+      "Bash(sips -g pixelWidth -g pixelHeight Laundry/Asset/Assets.xcassets/leaves.imageset/leaves.png Laundry/Asset/Assets.xcassets/btnSecondary.imageset/btnSecondary.png Laundry/Asset/Assets.xcassets/slider.imageset/slider.png Laundry/Asset/Assets.xcassets/slideBase.imageset/slideBase.png Laundry/Asset/Assets.xcassets/btnSettings.imageset/btnSettings.png)",
+      "Bash(xcodebuild -scheme Laundry -destination 'generic/platform=iOS Simulator' clean build)",
+      "Bash(/bin/bash -c ' *)",
+      "Bash(md5 Laundry/bg-music.wav Laundry/Asset/Audio/*.wav)",
+      "Bash(xcodebuild -project Laundry.xcodeproj -scheme Laundry -destination 'generic/platform=iOS Simulator' build CODE_SIGNING_ALLOWED=NO)"
+    ],
+    "additionalDirectories": [
+      "/Users/auliaguss/Projects/Games/Laundry/Laundry/Assets.xcassets/dress.imageset"
+    ]
+  }
+}

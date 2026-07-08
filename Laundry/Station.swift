@@ -32,20 +32,29 @@ enum Station: Int, CaseIterable {
 
 extension SKScene {
 
+    /// Positions relative to `sceneCenter` so this lines up correctly whether the scene
+    /// anchors at the bottom-left (the default) or the center (CustomerScene, HandoffScene).
+    /// Pass `showLeft`/`showRight` false to omit an arrow on scenes that shouldn't offer
+    /// that direction (e.g. CustomerScene has no left arrow, HandoffScene has neither).
     @discardableResult
-    func addStationArrows(current: Station) -> (left: SKSpriteNode, right: SKSpriteNode) {
-        let left = makeButton(
+    func addStationArrows(current: Station, showLeft: Bool = true, showRight: Bool = true) -> (left: SKSpriteNode?, right: SKSpriteNode?) {
+        let center = sceneCenter
+        let edgeOffset = size.width * 0.40
+
+        let left: SKSpriteNode? = showLeft ? makeButton(
             imageNamed: AssetName.UI.chevronLeft,
-            position: CGPoint(x: size.width * 0.05, y: size.height * 0.5),
+            position: CGPoint(x: center.x - edgeOffset, y: center.y),
             scale: 0.8,
             nodeName: "stationLeft"
-        )
-        let right = makeButton(
+        ) : nil
+
+        let right: SKSpriteNode? = showRight ? makeButton(
             imageNamed: AssetName.UI.chevronRight,
-            position: CGPoint(x: size.width * 0.95, y: size.height * 0.5),
+            position: CGPoint(x: center.x + edgeOffset, y: center.y),
             scale: 0.8,
             nodeName: "stationRight"
-        )
+        ) : nil
+
         return (left, right)
     }
 

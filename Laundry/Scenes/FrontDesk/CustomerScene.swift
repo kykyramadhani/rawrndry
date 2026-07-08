@@ -16,7 +16,6 @@ class CustomerScene: SKScene {
     
     // UI Nodes
     private var chevronBtn: SKSpriteNode!
-    private var chevronLeftBtn: SKSpriteNode!
     private var dayHud: SKSpriteNode!
     private var currencyHud: SKSpriteNode!
     private var instructionBtn: SKSpriteNode!
@@ -75,22 +74,14 @@ class CustomerScene: SKScene {
         // --- Instruction Button ---
         instructionBtn = SKSpriteNode(imageNamed: AssetName.UI.btnInstruction)
         instructionBtn.setScale(0.8)
-        instructionBtn.position = CGPoint(x: self.size.width * 0.43, y: topY)
+        instructionBtn.position = CGPoint(x: self.size.width * 0.35, y: topY)
         instructionBtn.zPosition = 100
         addChild(instructionBtn)
 
-        // --- Chevron Buttons ---
-        chevronBtn = SKSpriteNode(imageNamed: AssetName.UI.chevronRight)
-        chevronBtn.setScale(0.8)
-        chevronBtn.position = CGPoint(x: self.size.width * 0.43, y: 0)
-        chevronBtn.zPosition = 100
-        addChild(chevronBtn)
+        // --- Chevron Button --- (right only; this is the start of the station loop)
+        chevronBtn = addStationArrows(current: .customer, showLeft: false).right!
 
-        chevronLeftBtn = SKSpriteNode(imageNamed: AssetName.UI.chevronLeft)
-        chevronLeftBtn.setScale(0.8)
-        chevronLeftBtn.position = CGPoint(x: -self.size.width * 0.43, y: 0)
-        chevronLeftBtn.zPosition = 100
-        addChild(chevronLeftBtn)
+        addSettingsButton()
     }
     
     private func setupCustomer() {
@@ -211,7 +202,9 @@ class CustomerScene: SKScene {
         guard let touch = touches.first else { return }
         let location = touch.location(in: self)
 
+        if handleSettingsPopupTouchesBegan(at: location) { return }
         if handleTipPopupTap(at: location) { return }
+        if handleSettingsButtonTap(nodeName: tappedNodeName(at: location)) { return }
 
         if chevronBtn.contains(location) {
             self.isUserInteractionEnabled = false
@@ -229,20 +222,7 @@ class CustomerScene: SKScene {
             let scaleDown = SKAction.scale(to: 0.7, duration: 0.1)
             let scaleUp = SKAction.scale(to: 0.8, duration: 0.1)
             instructionBtn.run(SKAction.sequence([scaleDown, scaleUp]))
-            showTipPopup(text: "Press the sack to proceed to washing process")
-            return
-        }
-
-        if chevronLeftBtn.contains(location) {
-            self.isUserInteractionEnabled = false
-
-            let scaleDown = SKAction.scale(to: 0.7, duration: 0.1)
-            let scaleUp = SKAction.scale(to: 0.8, duration: 0.1)
-
-            chevronLeftBtn.run(SKAction.sequence([scaleDown, scaleUp])) {
-                let foldingScene = FoldingScene(size: self.size)
-                SceneManager.shared.transition(to: foldingScene, from: self.view)
-            }
+            showTipPopup(text: Loc.t(.infoCustomer))
             return
         }
 
@@ -259,5 +239,14 @@ class CustomerScene: SKScene {
                 SceneManager.shared.transition(to: washingScene, from: self.view)
             }
         }
+    }
+
+    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard let touch = touches.first else { return }
+        _ = handleSettingsPopupTouchesMoved(at: touch.location(in: self))
+    }
+
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        _ = handleSettingsPopupTouchesEnded()
     }
 }

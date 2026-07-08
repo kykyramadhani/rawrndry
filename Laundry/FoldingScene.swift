@@ -4,7 +4,8 @@
 //
 //  Created by Aulia Agus on 01/07/26.
 //
-//  A single leaf-wrapped package sits center screen. The player swipes in the
+//  A single leaf-wrapped package sits center screen. The player first drags
+//  the clothes out of the basket and into the package, then swipes in the
 //  direction of the glowing arrow to fold each of its four flaps (states 1→5),
 //  then drags the rope onto the package to tie it off before handing back to
 //  the customer.
@@ -18,30 +19,33 @@ class FoldingScene: SKScene {
     }
 
     private var currentState: Int = 1
+    private var clothesPlaced = false
     private var isRopeTied = false
     private var isDraggingRope = false
+    private var isDraggingClothes = false
     private var ropeDragOffset = CGPoint.zero
+    private var clothesDragOffset = CGPoint.zero
     private var swipeStart: CGPoint?
 
     private var leafBack: SKSpriteNode!
     private var leafFront: SKSpriteNode!
     private var clothesPile: SKSpriteNode!
     private var clothesShadow: SKSpriteNode!
+    private var clothesDragIcon: SKSpriteNode!
     private var rope: SKSpriteNode!
     private var knottedRope: SKSpriteNode!
     private var basket: SKSpriteNode!
     private var arrows: [FoldArrow: SKSpriteNode] = [:]
-    private var progressDots: [SKShapeNode] = []
 
     private var helpButton: SKSpriteNode!
     private var hintLabel: SKLabelNode!
 
     private let minSwipeDistance: CGFloat = 60
-    private let leafSize = CGSize(width: 220, height: 220)
-    private let ropeSize = CGSize(width: 60, height: 60)
+    private let leafSize = CGSize(width: 300, height: 300)
+    private let ropeSize = CGSize(width: 90, height: 90)
 
     private var packageCenter: CGPoint { CGPoint(x: size.width * 0.5, y: size.height * 0.55) }
-    private var ropeStartPosition: CGPoint { CGPoint(x: size.width * 0.88, y: size.height * 0.2) }
+    private var ropeStartPosition: CGPoint { CGPoint(x: size.width * 0.88, y: size.height * 0.3) }
     private var basketPosition: CGPoint { CGPoint(x: size.width * 0.1, y: size.height * 0.2) }
 
     private var packageBounds: CGRect {
@@ -60,41 +64,44 @@ class FoldingScene: SKScene {
 
         addBasket()
         addClothesLayer()
+        addClothesDragIcon()
         addLeafLayers()
         addArrows()
         addRope()
         addKnottedRope()
-        addProgressDots()
 
         helpButton = makeButton(
             imageNamed: AssetName.UI.btnInstruction,
-            position: CGPoint(x: size.width * 0.93, y: size.height * 0.90),
+            position: CGPoint(x: size.width * 0.85, y: size.height * 0.90),
             scale: 0.8,
             nodeName: "help"
         )
 
-        hintLabel = makeHintLabel(position: CGPoint(x: size.width / 2, y: size.height * 0.85))
+        hintLabel = makeHintLabel(position: CGPoint(x: size.width / 2, y: size.height * 0.08))
+
+        addSettingsButton()
 
         refreshState()
-        swapBasketToEmpty()
+        showHint(initialHintText, on: hintLabel)
+    }
+
+    /// Whether the clothes have actually reached the basket this scene pulls from — see
+    /// `GameState.isReadyForFolding`. While false, the basket stays empty and un-draggable.
+    private var isFoldingReady: Bool { GameState.shared.isReadyForFolding }
+
+    private var initialHintText: String {
+        guard !isFoldingReady else { return Loc.t(.foldingHintDragClothes) }
+        return GameState.shared.isFullyWashed ? Loc.t(.foldingHintNotDried) : Loc.t(.foldingHintNotWashed)
     }
 
     // MARK: - Setup
 
     private func addBasket() {
-        basket = SKSpriteNode(imageNamed: "packagingBasketFull")
+        basket = SKSpriteNode(imageNamed: isFoldingReady ? "packagingBasketFull" : "packagingBasketEmpty")
         basket.size = CGSize(width: 90, height: 70)
         basket.position = basketPosition
         basket.zPosition = 5
         addChild(basket)
-    }
-
-    /// The dried pile is already shown center-stage, so the basket empties shortly after arrival.
-    private func swapBasketToEmpty() {
-        run(.sequence([
-            .wait(forDuration: 0.5),
-            .run { [weak self] in self?.basket.texture = SKTexture(imageNamed: "packagingBasketEmpty") }
-        ]))
     }
 
     private func addClothesLayer() {
@@ -102,14 +109,28 @@ class FoldingScene: SKScene {
         clothesShadow.size = leafSize
         clothesShadow.position = packageCenter
         clothesShadow.zPosition = 1.0
+        clothesShadow.isHidden = true
         addChild(clothesShadow)
 
-        clothesPile = SKSpriteNode(imageNamed: "packagingFoldedClothes1")
+        clothesPile = SKSpriteNode(imageNamed: "packagingFoldedClothes\(GameState.shared.clothesCount)")
         clothesPile.name = "clothesPile"
         clothesPile.size = CGSize(width: leafSize.width * 0.8, height: leafSize.height * 0.8)
         clothesPile.position = packageCenter
         clothesPile.zPosition = 1.1
+        clothesPile.isHidden = true
         addChild(clothesPile)
+    }
+
+    /// The clothes sitting in the basket, dragged into the package to reveal `clothesPile`.
+    /// Hidden until `isFoldingReady` — an empty basket has nothing to drag out.
+    private func addClothesDragIcon() {
+        clothesDragIcon = SKSpriteNode(imageNamed: "packagingFoldedClothes\(GameState.shared.clothesCount)")
+        clothesDragIcon.name = "clothesDragIcon"
+        clothesDragIcon.size = CGSize(width: 100, height: 100)
+        clothesDragIcon.position = basketPosition
+        clothesDragIcon.zPosition = 6
+        clothesDragIcon.isHidden = !isFoldingReady
+        addChild(clothesDragIcon)
     }
 
     private func addLeafLayers() {
@@ -130,7 +151,7 @@ class FoldingScene: SKScene {
     }
 
     private func addArrows() {
-        let offset: CGFloat = 120
+        let offset: CGFloat = 165
         let configs: [(FoldArrow, CGPoint, CGFloat)] = [
             (.right, CGPoint(x: packageCenter.x + offset, y: packageCenter.y), 0),
             (.left, CGPoint(x: packageCenter.x - offset, y: packageCenter.y), .pi),
@@ -169,23 +190,6 @@ class FoldingScene: SKScene {
         addChild(knottedRope)
     }
 
-    private func addProgressDots() {
-        let dotRadius: CGFloat = 6
-        let spacing: CGFloat = 20
-        let totalSteps = 4
-        let startX = size.width / 2 - CGFloat(totalSteps - 1) * spacing / 2
-
-        for step in 0..<totalSteps {
-            let dot = SKShapeNode(circleOfRadius: dotRadius)
-            dot.position = CGPoint(x: startX + CGFloat(step) * spacing, y: size.height * 0.06)
-            dot.fillColor = .white
-            dot.strokeColor = .darkGray
-            dot.zPosition = 10
-            addChild(dot)
-            progressDots.append(dot)
-        }
-    }
-
     // MARK: - State machine
 
     private func refreshState() {
@@ -199,11 +203,10 @@ class FoldingScene: SKScene {
         }
 
         refreshArrows()
-        refreshProgressDots()
 
         if currentState == 5 {
             rope.isHidden = false
-            showHint("Now tie the package!", on: hintLabel)
+            showHint(Loc.t(.foldingHintTieRope), on: hintLabel)
         }
     }
 
@@ -211,13 +214,22 @@ class FoldingScene: SKScene {
         switch state {
         case 1: return .right
         case 2: return .left
-        case 3: return .up
-        case 4: return .down
+        case 3: return .down
+        case 4: return .up
         default: return nil
         }
     }
 
     private func refreshArrows() {
+        guard clothesPlaced else {
+            for (_, arrow) in arrows {
+                arrow.removeAction(forKey: "pulse")
+                arrow.alpha = 0
+                arrow.setScale(1.0)
+            }
+            return
+        }
+
         let active = activeArrow(for: currentState)
         for (direction, arrow) in arrows {
             arrow.removeAction(forKey: "pulse")
@@ -236,13 +248,6 @@ class FoldingScene: SKScene {
         }
     }
 
-    private func refreshProgressDots() {
-        let completedSteps = currentState - 1
-        for (index, dot) in progressDots.enumerated() {
-            dot.fillColor = index < completedSteps ? .systemGreen : .white
-        }
-    }
-
     // MARK: - Touch handling
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -250,14 +255,22 @@ class FoldingScene: SKScene {
         let location = touch.location(in: self)
         let name = tappedNodeName(at: location)
 
+        if handleSettingsPopupTouchesBegan(at: location) { return }
         if handleTipPopupTap(at: location) { return }
 
         if handleStationArrowTap(nodeName: name, current: .folding) { return }
+        if handleSettingsButtonTap(nodeName: name) { return }
 
         if name == "help" {
             runButtonTapAnimation(on: helpButton) {
-                self.showTipPopup(text: "Drag your finger based on the arrow direction")
+                self.showTipPopup(text: Loc.t(.infoFolding))
             }
+            return
+        }
+
+        if isFoldingReady, !clothesPlaced, clothesDragIcon.frame.insetBy(dx: -10, dy: -10).contains(location) {
+            isDraggingClothes = true
+            clothesDragOffset = CGPoint(x: clothesDragIcon.position.x - location.x, y: clothesDragIcon.position.y - location.y)
             return
         }
 
@@ -268,18 +281,36 @@ class FoldingScene: SKScene {
             return
         }
 
+        guard clothesPlaced else { return }
         swipeStart = location
     }
 
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard isDraggingRope, let touch = touches.first else { return }
+        guard let touch = touches.first else { return }
         let location = touch.location(in: self)
+
+        if handleSettingsPopupTouchesMoved(at: location) { return }
+
+        if isDraggingClothes {
+            clothesDragIcon.position = CGPoint(x: location.x + clothesDragOffset.x, y: location.y + clothesDragOffset.y)
+            return
+        }
+
+        guard isDraggingRope else { return }
         rope.position = CGPoint(x: location.x + ropeDragOffset.x, y: location.y + ropeDragOffset.y)
     }
 
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        if handleSettingsPopupTouchesEnded() { return }
+
         guard let touch = touches.first else { return }
         let location = touch.location(in: self)
+
+        if isDraggingClothes {
+            isDraggingClothes = false
+            resolveClothesDrop()
+            return
+        }
 
         if isDraggingRope {
             isDraggingRope = false
@@ -294,6 +325,7 @@ class FoldingScene: SKScene {
     }
 
     override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
+        isDraggingClothes = false
         isDraggingRope = false
         swipeStart = nil
     }
@@ -309,7 +341,7 @@ class FoldingScene: SKScene {
             return
         }
 
-        playSound("sfx-drag")
+        playSound("folding")
         leafBack.run(.sequence([.scale(to: 1.05, duration: 0.1), .scale(to: 1.0, duration: 0.1)]))
         leafFront.run(.sequence([.scale(to: 1.05, duration: 0.1), .scale(to: 1.0, duration: 0.1)]))
 
@@ -338,13 +370,32 @@ class FoldingScene: SKScene {
         arrow.run(.repeat(shake, count: 3))
     }
 
+    // MARK: - Clothes drag
+
+    private func resolveClothesDrop() {
+        guard packageBounds.contains(clothesDragIcon.position) else {
+            clothesDragIcon.run(.move(to: basketPosition, duration: 0.3))
+            showHint(Loc.t(.foldingHintDragClothesToCenter), on: hintLabel)
+            return
+        }
+
+        clothesPlaced = true
+        clothesDragIcon.isHidden = true
+        clothesShadow.isHidden = false
+        clothesPile.isHidden = false
+        basket.texture = SKTexture(imageNamed: "packagingBasketEmpty")
+
+        refreshState()
+        showHint(Loc.t(.foldingHintSwipeToFold), on: hintLabel)
+    }
+
     // MARK: - Rope drag
 
     private func resolveRopeDrop() {
         guard packageBounds.contains(rope.position) else {
             rope.run(.move(to: ropeStartPosition, duration: 0.3))
             rope.texture = SKTexture(imageNamed: "packagingRope")
-            showHint("Drag to the center", on: hintLabel)
+            showHint(Loc.t(.foldingHintDragRopeToCenter), on: hintLabel)
             return
         }
 
@@ -359,8 +410,7 @@ class FoldingScene: SKScene {
         knottedRope.setScale(0.5)
         knottedRope.run(.scale(to: 1.0, duration: 0.25))
 
-        playSound("sfx-success")
-        showHint("Packaged!", on: hintLabel)
+        showHint(Loc.t(.foldingHintPackaged), on: hintLabel)
 
         GameState.shared.isPackaged = true
 
@@ -376,6 +426,6 @@ class FoldingScene: SKScene {
     // MARK: - Sound
 
     private func playSound(_ name: String) {
-        run(.playSoundFileNamed("\(name).wav", waitForCompletion: false))
+        AudioManager.shared.playSFX(name)
     }
 }
