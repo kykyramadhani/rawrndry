@@ -2,9 +2,9 @@
 //  WashingScene.swift
 //  Laundry
 //
-//  Drag a dirty item out of the basket onto the washing stone, scrub it clean,
-//  then drag it into the clean basket. Items are processed one at a time from
-//  the current customer's order queue.
+//  Drag a dirty item out of the basket onto the washing stone, apply the customer's
+//  requested soap from a holder, scrub it clean, then drag it into the clean basket.
+//  Items are processed one at a time from the current customer's order queue.
 
 import SpriteKit
 
@@ -19,13 +19,26 @@ class WashingScene: SKScene {
     private var helpButton: SKSpriteNode!
     private var hintLabel: SKLabelNode!
 
+    // Soap holders (static) and the node currently being dragged from one
+    private var soapHolder1: SKSpriteNode!
+    private var soapHolder2: SKSpriteNode!
+    private var draggedSoap: SKSpriteNode?
+    private var selectedSoapType: SoapFragrance?
+
     private var activeStains: [SKSpriteNode] = []
 
     var itemsToWash: [LaundryItem] = []
     private var currentItemIndex: Int = 0
 
     enum WashState {
-        case idle, draggingDirty, washing, clean, draggingClean
+        case idle
+        case draggingDirty
+        case waitingSoap    // Waiting for soap to be dragged from a holder
+        case draggingSoap   // Player is dragging a picked-up soap
+        case readyToScrub   // Soap applied, ready to scrub
+        case scrubbing      // Player is scrubbing
+        case clean
+        case draggingClean
     }
 
     private var currentState: WashState = .idle
@@ -122,27 +135,29 @@ class WashingScene: SKScene {
     }
 
     private func setupSoaps() {
-        let soap1 = SKSpriteNode(imageNamed: AssetName.Item.washingSoap(id: 1))
-        soap1.setScale(0.08)
-        soap1.position = CGPoint(x: self.size.width * 0.12, y: -self.size.height * 0.28)
-        soap1.zPosition = 15
-        addChild(soap1)
+        soapHolder1 = SKSpriteNode(imageNamed: AssetName.Item.washingSoap(id: 1))
+        soapHolder1.name = "soapHolder1"
+        soapHolder1.setScale(0.08)
+        soapHolder1.position = CGPoint(x: self.size.width * 0.12, y: -self.size.height * 0.28)
+        soapHolder1.zPosition = 15
+        addChild(soapHolder1)
 
-        let soap2 = SKSpriteNode(imageNamed: AssetName.Item.washingSoap(id: 2))
-        soap2.setScale(0.08)
-        soap2.position = CGPoint(x: self.size.width * 0.20, y: -self.size.height * 0.27)
-        soap2.zPosition = 15
-        addChild(soap2)
+        soapHolder2 = SKSpriteNode(imageNamed: AssetName.Item.washingSoap(id: 2))
+        soapHolder2.name = "soapHolder2"
+        soapHolder2.setScale(0.08)
+        soapHolder2.position = CGPoint(x: self.size.width * 0.20, y: -self.size.height * 0.27)
+        soapHolder2.zPosition = 15
+        addChild(soapHolder2)
     }
 
-    // Clothes pattern variety (patternID-based art) is disabled for now — everything
-    // uses the pattern-1 assets regardless of which item is currently being washed.
     private func updateBasketPile() {
         if currentItemIndex < itemsToWash.count {
-            basketPiles.texture = SKTexture(imageNamed: AssetName.Item.washingBasketPile(patternID: 1))
+            let currentItem = itemsToWash[currentItemIndex]
+
+            basketPiles.texture = SKTexture(imageNamed: AssetName.Item.washingBasketPile(patternID: currentItem.patternID))
             basketPiles.isHidden = false
 
-            pickedClothes.texture = SKTexture(imageNamed: AssetName.Item.washingPickedClothes(patternID: 1))
+            pickedClothes.texture = SKTexture(imageNamed: AssetName.Item.washingPickedClothes(patternID: currentItem.patternID))
             pickedClothes.size = pickedClothesSize
         } else {
             basketPiles.isHidden = true
@@ -156,13 +171,14 @@ class WashingScene: SKScene {
         requiredScrubAmount = (item.stain == .hard) ? 1200.0 : 600.0
         scrubAmount = 0.0
 
-        let stain = SKSpriteNode(imageNamed: AssetName.Item.washingStain(id: 1))
+        let randomStainID = Int.random(in: 1...4)
+        let stain = SKSpriteNode(imageNamed: AssetName.Item.washingStain(id: randomStainID))
 
         stain.size = CGSize(width: 60, height: 60)
         stain.zRotation = CGFloat.random(in: 0...(2 * .pi))
 
-        let safeAreaWidth = spreadClothesSize.width * 0.1
-        let safeAreaHeight = spreadClothesSize.height * 0.1
+        let safeAreaWidth = spreadClothesSize.width * 0.3
+        let safeAreaHeight = spreadClothesSize.height * 0.3
 
         let randomX = CGFloat.random(in: -safeAreaWidth...safeAreaWidth)
         let randomY = CGFloat.random(in: -safeAreaHeight...safeAreaHeight)
@@ -182,7 +198,72 @@ class WashingScene: SKScene {
         }
     }
 
-    // MARK: - Touch handling
+    // MARK: - Workflow Logic
+
+    private func beginWaitingForSoap() {
+        currentState = .waitingSoap
+    }
+
+    private func validateSoapDrop(_ selectedSoap: SoapFragrance, soapNode: SKSpriteNode) {
+        let currentItem = itemsToWash[currentItemIndex]
+        var isValid = false
+
+        if let requested = currentItem.requestedSoap {
+            isValid = (requested == selectedSoap)
+        } else {
+            isValid = true
+        }
+
+        if isValid {
+            applySoap(selectedSoap, soapNode: soapNode)
+        } else {
+            soapNode.removeFromParent()
+            draggedSoap = nil
+            selectedSoapType = nil
+            currentState = .waitingSoap
+        }
+    }
+
+    private func applySoap(_ soap: SoapFragrance, soapNode: SKSpriteNode) {
+        itemsToWash[currentItemIndex].usedSoap = soap
+
+        soapNode.removeFromParent()
+        draggedSoap = nil
+        selectedSoapType = nil
+
+        currentState = .readyToScrub
+    }
+
+    private func finishScrubbing() {
+        currentState = .clean
+        activeStains.forEach { $0.isHidden = true }
+        AudioManager.shared.stopScrubbing()
+        HapticsManager.shared.stopScrubbing()
+        showHint(Loc.t(.washingHintClean), on: hintLabel)
+    }
+
+    private func moveToCleanBasket() {
+        pickedClothes.isHidden = true
+        currentState = .idle
+
+        let washedItem = itemsToWash[currentItemIndex]
+        rightBasketPiles.texture = SKTexture(imageNamed: AssetName.Item.washingBasketPile(patternID: washedItem.patternID))
+        rightBasketPiles.isHidden = false
+
+        spreadClothes.position = CGPoint(x: self.size.width * spreadClothesPosition.x,
+                                         y: self.size.height * spreadClothesPosition.y)
+        spreadClothes.zPosition = 4
+
+        currentItemIndex += 1
+        updateBasketPile()
+
+        if currentItemIndex >= itemsToWash.count {
+            markGameStateFullyWashed()
+            showHint(Loc.t(.washingHintNiceClean), on: hintLabel)
+        }
+    }
+
+    // MARK: - Touch Handling
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let touch = touches.first else { return }
@@ -208,12 +289,37 @@ class WashingScene: SKScene {
                 pickedClothes.position = location
                 pickedClothes.isHidden = false
             }
-        case .washing:
+
+        case .waitingSoap:
+            if soapHolder1.contains(location) {
+                currentState = .draggingSoap
+                selectedSoapType = .rose
+
+                draggedSoap = SKSpriteNode(imageNamed: AssetName.Item.washingSoapPicked(id: 1))
+                draggedSoap?.setScale(0.08)
+                draggedSoap?.position = location
+                draggedSoap?.zPosition = 25
+                if let newSoap = draggedSoap { addChild(newSoap) }
+
+            } else if soapHolder2.contains(location) {
+                currentState = .draggingSoap
+                selectedSoapType = .soapFruit
+
+                draggedSoap = SKSpriteNode(imageNamed: AssetName.Item.washingSoapPicked(id: 2))
+                draggedSoap?.setScale(0.08)
+                draggedSoap?.position = location
+                draggedSoap?.zPosition = 25
+                if let newSoap = draggedSoap { addChild(newSoap) }
+            }
+
+        case .readyToScrub, .scrubbing:
             if spreadClothes.contains(location) {
                 lastTouchLocation = location
                 lastTouchTime = touch.timestamp
+                currentState = .scrubbing
                 HapticsManager.shared.startScrubbing()
             }
+
         case .clean:
             if spreadClothes.contains(location) {
                 currentState = .draggingClean
@@ -221,6 +327,7 @@ class WashingScene: SKScene {
                 pickedClothes.position = location
                 pickedClothes.isHidden = false
             }
+
         default: break
         }
     }
@@ -235,7 +342,10 @@ class WashingScene: SKScene {
         case .draggingDirty, .draggingClean:
             pickedClothes.position = location
 
-        case .washing:
+        case .draggingSoap:
+            draggedSoap?.position = location
+
+        case .scrubbing:
             if let lastTouch = lastTouchLocation, spreadClothes.contains(location) {
                 let distance = hypot(location.x - lastTouch.x, location.y - lastTouch.y)
                 scrubAmount += distance
@@ -252,11 +362,7 @@ class WashingScene: SKScene {
                 HapticsManager.shared.updateScrubbing(velocity: velocity)
 
                 if progress >= 1.0 {
-                    currentState = .clean
-                    activeStains.forEach { $0.isHidden = true }
-                    AudioManager.shared.stopScrubbing()
-                    HapticsManager.shared.stopScrubbing()
-                    showHint(Loc.t(.washingHintClean), on: hintLabel)
+                    finishScrubbing()
                 }
             }
         default: break
@@ -275,44 +381,39 @@ class WashingScene: SKScene {
                                   width: self.size.width * 0.3, height: self.size.height * 0.3)
 
             if rockArea.contains(pickedClothes.position) {
-                currentState = .washing
                 pickedClothes.isHidden = true
 
                 if currentItemIndex < itemsToWash.count {
                     let currentItem = itemsToWash[currentItemIndex]
-                    spreadClothes.texture = SKTexture(imageNamed: AssetName.Item.washingClothes(patternID: 1))
+                    spreadClothes.texture = SKTexture(imageNamed: currentItem.imageName)
                     spreadClothes.size = spreadClothesSize
                     setupStains(for: currentItem)
-                }
 
-                spreadClothes.isHidden = false
-                activeStains.forEach { $0.isHidden = false; $0.alpha = 1.0 }
-                scrubAmount = 0.0
+                    spreadClothes.isHidden = false
+                    activeStains.forEach { $0.isHidden = false; $0.alpha = 1.0 }
+
+                    beginWaitingForSoap()
+                }
             } else {
                 pickedClothes.isHidden = true
                 currentState = .idle
             }
 
+        case .draggingSoap:
+            guard let dragged = draggedSoap, let soapType = selectedSoapType else { return }
+
+            if spreadClothes.contains(dragged.position) {
+                validateSoapDrop(soapType, soapNode: dragged)
+            } else {
+                dragged.removeFromParent()
+                draggedSoap = nil
+                selectedSoapType = nil
+                currentState = .waitingSoap
+            }
+
         case .draggingClean:
             if rightBasket.contains(pickedClothes.position) {
-                pickedClothes.isHidden = true
-                currentState = .idle
-
-                rightBasketPiles.texture = SKTexture(imageNamed: AssetName.Item.washingBasketPile(patternID: 1))
-                rightBasketPiles.isHidden = false
-
-                spreadClothes.position = CGPoint(x: self.size.width * spreadClothesPosition.x,
-                                                 y: self.size.height * spreadClothesPosition.y)
-                spreadClothes.zPosition = 4
-
-                currentItemIndex += 1
-                updateBasketPile()
-
-                if currentItemIndex >= itemsToWash.count {
-                    markGameStateFullyWashed()
-                    showHint(Loc.t(.washingHintNiceClean), on: hintLabel)
-                }
-
+                moveToCleanBasket()
             } else {
                 pickedClothes.isHidden = true
                 spreadClothes.isHidden = false
