@@ -54,7 +54,13 @@ class WashingScene: SKScene {
 
     override func didMove(to view: SKView) {
         self.anchorPoint = CGPoint(x: 0.5, y: 0.5)
-        GameState.shared.generateOrderIfNeeded()
+
+        // Safety net: CustomerScene normally seeds GameState via startOrder(items:) before
+        // pushing this scene, but if WashingScene is somehow reached directly, make sure
+        // GameState's pipeline still matches the items this scene is actually processing.
+        if GameState.shared.clothesCount != itemsToWash.count {
+            GameState.shared.startOrder(items: itemsToWash)
+        }
 
         setupBackground()
         setupLeftBasket()
@@ -159,6 +165,19 @@ class WashingScene: SKScene {
 
             pickedClothes.texture = SKTexture(imageNamed: AssetName.Item.washingPickedClothes(patternID: currentItem.patternID))
             pickedClothes.size = pickedClothesSize
+        } else {
+            basketPiles.isHidden = true
+        }
+    }
+
+    /// Updates the dirty basket's pile the instant the current item leaves it for the washing
+    /// stone — shows whatever's next in the queue, or hides the pile entirely if this was the
+    /// last item, instead of leaving the just-picked-up item's pattern showing until it's clean.
+    private func revealNextBasketItem() {
+        let nextIndex = currentItemIndex + 1
+        if nextIndex < itemsToWash.count {
+            basketPiles.texture = SKTexture(imageNamed: AssetName.Item.washingBasketPile(patternID: itemsToWash[nextIndex].patternID))
+            basketPiles.isHidden = false
         } else {
             basketPiles.isHidden = true
         }
@@ -393,6 +412,7 @@ class WashingScene: SKScene {
                     activeStains.forEach { $0.isHidden = false; $0.alpha = 1.0 }
 
                     beginWaitingForSoap()
+                    revealNextBasketItem()
                 }
             } else {
                 pickedClothes.isHidden = true

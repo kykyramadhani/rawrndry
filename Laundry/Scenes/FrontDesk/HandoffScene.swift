@@ -83,13 +83,9 @@ class HandoffScene: SKScene {
     }
 
     private func setupCustomer() {
-        let customerImages = [
-            AssetName.Character.customer1,
-            AssetName.Character.customer2,
-            AssetName.Character.customer3,
-            AssetName.Character.customer4
-        ]
-        let characterImage = customerImages[(GameState.shared.currentDay - 1) % customerImages.count]
+        // Same customer who dropped the order off at the front desk — carried via GameState
+        // since Washing/Drying/Folding only ever pass GameState forward, not the CustomerModel.
+        let characterImage = GameState.shared.currentCustomerImage
         let texture = SKTexture(imageNamed: characterImage)
         customerNode = SKSpriteNode(texture: texture)
 
@@ -264,8 +260,10 @@ class HandoffScene: SKScene {
     }
 
     private func calculateCoins() {
-        let base = GameState.shared.clothesCount * 4000
-        let deduction = GameState.shared.tornItemsCount * 1000
+        // The payout is fixed by the day's level design (see LevelDesign), not derived from
+        // clothes count here, so it can't drift from what the front desk quoted the player.
+        let base = GameState.shared.currentOrderReward
+        let deduction = GameState.shared.tornItemsCount * 50
         GameState.shared.coinsEarned = max(0, base - deduction)
     }
 
@@ -352,16 +350,25 @@ class HandoffScene: SKScene {
             runButtonTapAnimation(on: okButton ?? overlay) { [weak self] in
                 guard let self else { return }
                 GameState.shared.score += GameState.shared.coinsEarned
-                GameState.shared.resetForNewDay()
-                self.goTo(CustomerScene(size: self.size))
+                GameState.shared.coinsEarned = 0
+
+                if CustomerManager.shared.remainingCustomersForToday.isEmpty {
+                    // That was the last customer of the day — advance the day counter and
+                    // bounce back to StartScene, which continues into the next day (or shows
+                    // the "more levels coming soon" state once the design table runs out).
+                    GameState.shared.currentDay += 1
+                    self.goTo(StartScene(size: self.size))
+                } else {
+                    self.goTo(CustomerScene(size: self.size))
+                }
             }
         }
         return true
     }
 
-    /// Percentage of the maximum possible payout this order could have earned (4000/item, minus tears).
+    /// Percentage of the maximum possible payout this order could have earned, minus tears.
     private func starCount() -> Int {
-        let maxPossible = max(GameState.shared.clothesCount * 4000, 1)
+        let maxPossible = max(GameState.shared.currentOrderReward, 1)
         let percentage = CGFloat(GameState.shared.coinsEarned) / CGFloat(maxPossible) * 100
 
         if percentage >= 80 { return 3 }

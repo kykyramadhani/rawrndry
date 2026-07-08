@@ -28,15 +28,26 @@ class CustomerScene: SKScene {
     private let plainTextColor = UIColor(red: 255.0/255.0, green: 247.0/255.0, blue: 234.0/255.0, alpha: 1.0)
     private let plainTextBrown = UIColor(red: 143.0/255.0, green: 43.0/255.0, blue: 18.0/255.0, alpha: 1.0)
     
+    /// Set once per app run when the very first customer of Day 1 shows the auto-opened
+    /// tutorial popup, so revisiting this scene later never shows it again.
+    private static let tutorialSeenKey = "hasSeenFrontDeskTutorial"
+
     override func didMove(to view: SKView) {
         self.anchorPoint = CGPoint(x: 0.5, y: 0.5)
-        
+
+        // There's no designed content past the last day yet — bounce back to StartScene,
+        // which shows the "more levels coming soon" state instead of a broken empty order.
+        guard LevelDesign.config(forDay: GameState.shared.currentDay) != nil else {
+            goTo(StartScene(size: self.size))
+            return
+        }
+
         currentCustomer = CustomerManager.shared.getNextCustomer()
         if currentCustomer == nil {
             CustomerManager.shared.generateCustomers(forDay: GameState.shared.currentDay)
             currentCustomer = CustomerManager.shared.getNextCustomer()
         }
-        
+
         setupBackground()
         setupUI()
         setupCustomer()
@@ -45,9 +56,20 @@ class CustomerScene: SKScene {
         setupSpeechBubble()
 
         animateArrival()
-        
+        showFirstTimeTutorialIfNeeded()
+
         AudioManager.shared.stopRiverAmbience()
         AudioManager.shared.playThemeBGM()
+    }
+
+    /// Auto-opens the same help popup the "i" button shows, but only once ever — for the
+    /// very first customer of Day 1, so brand-new players get walked through the flow.
+    private func showFirstTimeTutorialIfNeeded() {
+        guard GameState.shared.currentDay == 1, currentCustomer?.customerIndexInDay == 0 else { return }
+        guard !UserDefaults.standard.bool(forKey: Self.tutorialSeenKey) else { return }
+
+        UserDefaults.standard.set(true, forKey: Self.tutorialSeenKey)
+        showTipPopup(text: Loc.t(.infoCustomer))
     }
     
     private func setupBackground() {
@@ -197,8 +219,12 @@ class CustomerScene: SKScene {
     }
     
     private func transitionToWashingScene() {
+        guard let customer = currentCustomer else { return }
+
+        GameState.shared.startOrder(items: customer.itemsToWash, customerImage: customer.characterImage, reward: customer.reward)
+
         let washingScene = WashingScene(size: self.size)
-        washingScene.itemsToWash = self.currentCustomer?.itemsToWash ?? []
+        washingScene.itemsToWash = customer.itemsToWash
         SceneManager.shared.transition(to: washingScene, from: self.view)
     }
     

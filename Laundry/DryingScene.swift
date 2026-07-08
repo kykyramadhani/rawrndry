@@ -21,6 +21,10 @@ class DryingScene: SKScene {
     private var wetOverlays: [SKSpriteNode?] = []
     private var dragState: (index: Int, origin: DragOrigin)?
 
+    /// Which rack slot each currently-hung item occupies, assigned once when it's hung and
+    /// kept stable — picking up or removing one item never reflows the others' positions.
+    private var itemSlots: [Int: Int] = [:]
+
     private var basketNode: SKSpriteNode!
     private var basketPiles: SKSpriteNode!
     private var dryBasketNode: SKSpriteNode!
@@ -126,22 +130,26 @@ class DryingScene: SKScene {
         setupDryingInput()
     }
 
+    /// Hidden at rest — it only appears while the player is actively dragging/fanning it
+    /// (see touchesBegan/touchesEnded/touchesCancelled), so it doesn't clutter the rope area
+    /// when it's not in use.
     private func addLeafTool() {
         let leaf = SKSpriteNode(imageNamed: "dryingLeafFan")
         leaf.name = "leafTool"
         leaf.size = CGSize(width: 64, height: 54)
         leaf.position = CGPoint(x: size.width * 0.5, y: ropeY - 20)
         leaf.zPosition = 40
+        leaf.isHidden = true
         addChild(leaf)
         leafNode = leaf
     }
 
-    /// Sits on the ground, centered under the rope — clear of the fan and the hanging rack so it
-    /// doesn't compete with either, matching the separated look of the reference art.
+    /// Sits just below center screen — clear of the fan and the hanging rack so it doesn't
+    /// compete with either.
     private func addLeafRopeProp() {
         let prop = SKSpriteNode(imageNamed: "dryingLeafRope")
         prop.size = CGSize(width: 66, height: 66)
-        prop.position = CGPoint(x: size.width * 0.5, y: ropeY - 130)
+        prop.position = CGPoint(x: size.width * 0.5, y: size.height * 0.45)
         prop.zPosition = 4
         addChild(prop)
         leafRopeNode = prop
@@ -159,6 +167,9 @@ class DryingScene: SKScene {
         addChild(rope)
     }
 
+    /// Same basket + pile formatting as WashingScene: an empty basket sprite with the
+    /// pattern-specific pile sprite sized and positioned to exactly overlay it (not a
+    /// smaller, offset sliver), for every pattern 1...4.
     private func addBasketVisual() {
         basketNode = SKSpriteNode(imageNamed: "dryingBasket")
         basketNode.size = CGSize(width: 100, height: 78)
@@ -167,8 +178,8 @@ class DryingScene: SKScene {
         addChild(basketNode)
 
         basketPiles = SKSpriteNode(imageNamed: "dryingBasketPiles1")
-        basketPiles.size = CGSize(width: 80, height: 46)
-        basketPiles.position = CGPoint(x: basketPosition.x, y: basketPosition.y + 18)
+        basketPiles.size = basketNode.size
+        basketPiles.position = basketNode.position
         basketPiles.zPosition = 3
         addChild(basketPiles)
 
@@ -179,8 +190,8 @@ class DryingScene: SKScene {
         addChild(dryBasketNode)
 
         dryBasketPiles = SKSpriteNode(imageNamed: "dryingBasketPiles1")
-        dryBasketPiles.size = CGSize(width: 80, height: 46)
-        dryBasketPiles.position = CGPoint(x: dryBasketPosition.x, y: dryBasketPosition.y + 18)
+        dryBasketPiles.size = dryBasketNode.size
+        dryBasketPiles.position = dryBasketNode.position
         dryBasketPiles.zPosition = 3
         addChild(dryBasketPiles)
     }
@@ -196,11 +207,10 @@ class DryingScene: SKScene {
     private func setupItems() {
         itemNodes = Array(repeating: nil, count: GameState.shared.clothesTypes.count)
         wetOverlays = Array(repeating: nil, count: GameState.shared.clothesTypes.count)
+        itemSlots = [:]
 
-        var hungCount = 0
         for index in GameState.shared.itemProgress.indices where GameState.shared.itemProgress[index].isHungToDry {
-            hangItem(index: index, slot: hungCount)
-            hungCount += 1
+            hangItem(index: index)
         }
 
         updateBasketPilesVisibility()
@@ -225,21 +235,35 @@ class DryingScene: SKScene {
         return node
     }
 
-    private func hangItem(index: Int, slot: Int) {
+    /// Hangs `index` at its previously-assigned rack slot, or claims the next free one if
+    /// this is the first time it's being hung. The slot sticks until `freeSlot(for:)` is
+    /// called, so picking up or removing a different item never moves this one.
+    private func hangItem(index: Int) {
+        let slot = itemSlots[index] ?? nextFreeSlot()
+        itemSlots[index] = slot
+
         let node = makeHungItemNode(index: index)
         node.position = rackSlotPosition(slot: slot)
         addChild(node)
         itemNodes[index] = node
     }
 
+    private func nextFreeSlot() -> Int {
+        var slot = 0
+        while itemSlots.values.contains(slot) { slot += 1 }
+        return slot
+    }
+
+    /// Releases `index`'s rack slot once it's no longer hung (dried and collected, or
+    /// dropped/fallen back into the wet basket) so a future item can claim it.
+    private func freeSlot(for index: Int) {
+        itemSlots.removeValue(forKey: index)
+    }
+
     private func rackSlotPosition(slot: Int) -> CGPoint {
         let spacing: CGFloat = 80
         let startX = size.width * 0.55 - spacing * 1.5
         return CGPoint(x: startX + CGFloat(slot) * spacing, y: ropeY - 55)
-    }
-
-    private func countHungItems(excluding: Int?) -> Int {
-        GameState.shared.itemProgress.indices.filter { $0 != excluding && GameState.shared.itemProgress[$0].isHungToDry }.count
     }
 
     private func updateBasketPilesVisibility() {
@@ -462,12 +486,12 @@ class DryingScene: SKScene {
             ])
             node.run(.sequence([drop, .removeFromParent()]))
             itemNodes[index] = nil
+            freeSlot(for: index)
 
             GameState.shared.itemProgress[index].isHungToDry = false
             GameState.shared.itemProgress[index].dryProgress = 0
         }
 
-        relayoutHungItems()
         updateBasketPilesVisibility()
         updateBlowBar()
     }
@@ -540,6 +564,7 @@ class DryingScene: SKScene {
             lastFanPoint = location
             fanAccumDistance = 0
             leafNode?.position = location
+            leafNode?.isHidden = false
             leafRopeNode?.isHidden = true
         }
     }
@@ -573,6 +598,7 @@ class DryingScene: SKScene {
         if isFanning {
             isFanning = false
             lastFanPoint = nil
+            leafNode?.isHidden = true
             leafRopeNode?.isHidden = false
             return
         }
@@ -587,6 +613,7 @@ class DryingScene: SKScene {
         if isFanning {
             isFanning = false
             lastFanPoint = nil
+            leafNode?.isHidden = true
             leafRopeNode?.isHidden = false
             return
         }
@@ -595,7 +622,7 @@ class DryingScene: SKScene {
         dragState = nil
         pickedClothes.isHidden = true
         if drag.origin == .rope {
-            hangItem(index: drag.index, slot: countHungItems(excluding: nil))
+            hangItem(index: drag.index)
         }
         updateBasketPilesVisibility()
     }
@@ -619,29 +646,23 @@ class DryingScene: SKScene {
         case .basket:
             if rackZone.contains(position) {
                 GameState.shared.itemProgress[index].isHungToDry = true
-                hangItem(index: index, slot: countHungItems(excluding: index))
+                hangItem(index: index)
             }
         case .rope:
             let progress = GameState.shared.itemProgress[index]
             if progress.isDried, dryBasketZone.contains(position) {
                 GameState.shared.itemProgress[index].isHungToDry = false
+                freeSlot(for: index)
             } else if !progress.isDried, basketZone.contains(position) {
                 GameState.shared.itemProgress[index].isHungToDry = false
                 GameState.shared.itemProgress[index].dryProgress = 0
+                freeSlot(for: index)
             } else {
-                hangItem(index: index, slot: countHungItems(excluding: index))
+                hangItem(index: index)
             }
         }
 
-        relayoutHungItems()
         updateBasketPilesVisibility()
         updateBlowBar()
-    }
-
-    private func relayoutHungItems() {
-        let hungIndices = GameState.shared.itemProgress.indices.filter { GameState.shared.itemProgress[$0].isHungToDry }
-        for (slot, index) in hungIndices.enumerated() {
-            itemNodes[index]?.run(.move(to: rackSlotPosition(slot: slot), duration: 0.2))
-        }
     }
 }

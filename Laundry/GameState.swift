@@ -83,6 +83,12 @@ final class GameState {
     /// an in-progress order" apart from "starting a new one" without a separate flag.
     var orderGeneratedDay: Int = 0
 
+    /// The character art and payout for whichever customer is currently being served —
+    /// carried from CustomerModel through Washing/Drying/Folding (which only ever read
+    /// GameState) so HandoffScene hands back to the *same* customer who dropped the order off.
+    var currentCustomerImage: String = AssetName.Character.customer1
+    var currentOrderReward: Int = 0
+
     private init() {}
 
     var isFullyWashed: Bool { itemProgress.allSatisfy { $0.isWashed } }
@@ -109,36 +115,26 @@ final class GameState {
         }
     }
 
-    /// Generates a fresh order for the current day if one hasn't been generated yet. Called from
-    /// CustomerScene normally, but also as a safety net from WashingScene, since some entry
-    /// points (the front-desk flow) jump straight into washing without visiting the order scene.
-    func generateOrderIfNeeded() {
-        guard orderGeneratedDay != currentDay else { return }
-
-        let maxItems: Int
-        switch currentDay {
-        case 1: maxItems = 1
-        case 2: maxItems = 2
-        default: maxItems = 3
-        }
-        let count = currentDay == 1 ? 1 : Int.random(in: 1...maxItems)
-
-        orderType = OrderType.allCases.randomElement() ?? .washOnly
-        clothesCount = count
-        clothesTypes = (0..<count).map { _ in ClothingType.allCases.randomElement() ?? .clothes }
-        itemProgress = (0..<count).map { _ in
+    /// Seeds a fresh order from the customer's *actual* clothes list — this is the single
+    /// source of truth for the wash → dry → fold pipeline now. Each item's `dryingVariant`
+    /// is copied straight from its `patternID`, so the exact same clothing item (same
+    /// pattern) flows through washing, drying, and folding instead of being re-randomized
+    /// independently at each stage.
+    func startOrder(items: [LaundryItem], orderType: OrderType = .washDryIron, customerImage: String? = nil, reward: Int? = nil) {
+        self.orderType = orderType
+        clothesCount = items.count
+        clothesTypes = Array(repeating: .clothes, count: items.count)
+        itemProgress = items.map { item in
             var progress = LaundryItemProgress()
-            progress.dryingVariant = Int.random(in: 1...4)
+            progress.dryingVariant = item.patternID
             return progress
         }
         tornItemsCount = 0
         isPackaged = false
         orderGeneratedDay = currentDay
-    }
 
-    func resetForNewDay() {
-        currentDay += 1
-        coinsEarned = 0
+        if let customerImage { currentCustomerImage = customerImage }
+        if let reward { currentOrderReward = reward }
     }
 
     func resetAll() {
@@ -152,5 +148,7 @@ final class GameState {
         itemProgress = []
         isPackaged = false
         orderGeneratedDay = 0
+        currentCustomerImage = AssetName.Character.customer1
+        currentOrderReward = 0
     }
 }

@@ -14,42 +14,39 @@ class CustomerManager {
     
     private init() {}
     
+    /// Populates the queue from `LevelDesign`'s fixed customer/clothes/reward table for this day.
+    /// Leaves the queue empty if there's no designed content for `day` yet (StartScene is
+    /// responsible for keeping the player from reaching this state in the first place).
     func generateCustomers(forDay day: Int) {
         remainingCustomersForToday.removeAll()
-        
+
+        guard let config = LevelDesign.config(forDay: day) else { return }
+
         let availableImages = [
             AssetName.Character.customer1,
             AssetName.Character.customer2,
             AssetName.Character.customer3,
             AssetName.Character.customer4
         ]
-        
-        let totalCustomers: Int
-        switch day {
-        case 1: totalCustomers = 2
-        case 2: totalCustomers = 3
-        case 3: totalCustomers = 5
-        default: totalCustomers = 5
-        }
-        
-        for _ in 0..<totalCustomers {
-            let numberOfClothes = Int.random(in: 2...3)
-            
+
+        for (index, customerConfig) in config.customers.enumerated() {
+            let numberOfClothes = customerConfig.clothesCount
+
             var availablePatterns = [1, 2, 3, 4]
             availablePatterns.shuffle()
-            
+
             // 1. Tentukan Sabun di awal
             // Acak apakah pelanggan ini punya request spesifik atau bebas (nil)
             let hasSpecificRequest = Bool.random()
             let randomSoap: SoapFragrance = Bool.random() ? .rose : .soapFruit
             let itemRequestedSoap: SoapFragrance? = hasSpecificRequest ? randomSoap : nil
-            
+
             var clothes: [LaundryItem] = []
-            
+
             for i in 0..<numberOfClothes {
                 let randomStain: StainLevel = Bool.random() ? .slight : .hard
                 let uniquePatternID = availablePatterns[i]
-                
+
                 // 2. Tambahkan parameter requestedSoap dan usedSoap (default nil)
                 clothes.append(LaundryItem(
                     patternID: uniquePatternID,
@@ -58,15 +55,17 @@ class CustomerManager {
                     usedSoap: nil
                 ))
             }
-            
+
             let randomCharacter = availableImages.randomElement()!
-            
+
             let newCustomer = CustomerModel(
                 characterImage: randomCharacter,
                 itemsToWash: clothes,
-                requestedSoap: randomSoap // Tetap diteruskan agar CustomerModel tidak error dan teks bubble tetap ada
+                requestedSoap: randomSoap, // Tetap diteruskan agar CustomerModel tidak error dan teks bubble tetap ada
+                reward: customerConfig.reward,
+                customerIndexInDay: index
             )
-            
+
             remainingCustomersForToday.append(newCustomer)
         }
     }

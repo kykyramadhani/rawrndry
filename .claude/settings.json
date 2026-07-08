@@ -31,7 +31,17 @@
       "Bash(echo \"exit code: $?\")",
       "Bash(git ls-tree *)",
       "Bash(git restore *)",
-      "Bash(git branch *)"
+      "Bash(git branch *)",
+      "Bash(xcodebuild -project Laundry.xcodeproj -scheme Laundry -destination id=__TRACKED_VAR__ -configuration Debug build)",
+      "Bash(xcodebuild -project Laundry.xcodeproj -scheme Laundry -destination 'id=7BCE9B3C-1419-4F89-B921-D2113E37B72B' -derivedDataPath /private/tmp/claude-501/-Users-auliaguss-Projects-Games-Laundry/cf62751a-6c07-499c-aba5-4c47d1eeae2c/scratchpad/DerivedData build)",
+      "Bash(xcodebuild -project Laundry.xcodeproj -scheme Laundry -destination 'id=B815E793-41EB-4AC2-B027-90F49A9880F1' -derivedDataPath /private/tmp/claude-501/-Users-auliaguss-Projects-Games-Laundry/cf62751a-6c07-499c-aba5-4c47d1eeae2c/scratchpad/DerivedData build)",
+      "Bash(osascript -e 'tell application \"Simulator\" to activate')",
+      "Bash(osascript -e 'tell application \"System Events\" to keystroke \"3\" using command down')",
+      "Bash(plutil -p \"/tmp/claude-501/-Users-auliaguss-Projects-Games-Laundry/cf62751a-6c07-499c-aba5-4c47d1eeae2c/scratchpad/DerivedData/Build/Products/Debug-iphonesimulator/Laundry.app/Info.plist\")",
+      "Bash(sips -r 90 --out /private/tmp/claude-501/-Users-auliaguss-Projects-Games-Laundry/cf62751a-6c07-499c-aba5-4c47d1eeae2c/scratchpad/screenshots/01_start_rot.png /private/tmp/claude-501/-Users-auliaguss-Projects-Games-Laundry/cf62751a-6c07-499c-aba5-4c47d1eeae2c/scratchpad/screenshots/01_start.png)",
+      "Bash(osascript -e 'tell application \"System Events\" to click at {100,100}')",
+      "Bash(swiftc -O AssetName.swift LaundryItem.swift CustomerModel.swift LevelDesign.swift CustomerManager.swift GameState.swift main.swift -o runtest)",
+      "Bash(/private/tmp/claude-501/-Users-auliaguss-Projects-Games-Laundry/cf62751a-6c07-499c-aba5-4c47d1eeae2c/scratchpad/logictest/runtest)"
     ],
     "additionalDirectories": [
       "/Users/auliaguss/Projects/Games/Laundry/Laundry/Assets.xcassets/dress.imageset"
