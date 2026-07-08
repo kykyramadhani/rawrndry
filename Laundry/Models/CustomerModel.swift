@@ -11,6 +11,7 @@ struct CustomerModel {
     let id = UUID()
     let characterImage: String
     let itemsToWash: [LaundryItem]
+    
     let requestedSoap: SoapFragrance
     
     var orderText: String {

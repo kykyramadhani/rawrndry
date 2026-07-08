@@ -22,6 +22,10 @@ struct LaundryItem {
     let patternID: Int
     let stain: StainLevel
     
+    let requestedSoap: SoapFragrance?
+    
+    var usedSoap: SoapFragrance?
+    
     var imageName: String {
         return AssetName.Item.washingClothes(patternID: patternID)
     }
