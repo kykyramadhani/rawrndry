@@ -271,6 +271,7 @@ class HandoffScene: SKScene {
     private func goToNextCustomer() {
         GameState.shared.score += GameState.shared.coinsEarned
         GameState.shared.coinsEarned = 0
+        GameState.shared.completeCurrentOrder()
         goTo(CustomerScene(size: size))
     }
 

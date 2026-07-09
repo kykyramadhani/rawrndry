@@ -153,6 +153,16 @@ final class GameState {
         if let reward { currentOrderReward = reward }
     }
 
+    /// Clears the just-finished order so the next `CustomerScene` starts a fresh customer
+    /// instead of `resumingCustomer()` mistaking the completed order for one still in progress.
+    func completeCurrentOrder() {
+        tornItemsCount = 0
+        itemProgress = []
+        currentOrderItems = []
+        isPackaged = false
+        orderGeneratedDay = 0
+    }
+
     /// Wipes the current day's in-progress order and re-queues its customers from the start —
     /// used by the home-button "are you sure you want to go back?" confirm. Leaves `currentDay`
     /// and any already-banked `score` untouched, since only *this* day is starting over.

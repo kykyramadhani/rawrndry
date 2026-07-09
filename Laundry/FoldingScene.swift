@@ -39,9 +39,21 @@ class FoldingScene: SKScene {
     private var helpButton: SKSpriteNode!
     private var hintLabel: SKLabelNode!
 
+    /// Set once ever after the "tie the rope" step is shown, so this walkthrough — gated to
+    /// Day 1's very first order — never replays on later orders.
+    private static let tutorialSeenKey = TutorialFlag.foldingSpotlight.rawValue
+
+    /// True for the entire first-ever fold, from didMove until the final step fires — gates
+    /// each of the tutorial hooks below without re-checking UserDefaults each time.
+    private var tutorialActive = false
+
     private let minSwipeDistance: CGFloat = 60
     private let leafSize = CGSize(width: 300, height: 300)
     private let ropeSize = CGSize(width: 130, height: 130)
+    private let arrowSize = CGSize(width: 38, height: 38)
+    /// Bumped up to this size while the fold-direction tutorial spotlights the arrows — at
+    /// their normal 38pt size they read as too thin/small to notice against the package art.
+    private let arrowHighlightedSize = CGSize(width: 72, height: 72)
     
     // 🔥 PENGATURAN JARAK TUMPUKAN (Hanya vertikal agar tumpukan lurus)
     private let stackVerticalOffset: CGFloat = 16.0
@@ -121,6 +133,14 @@ class FoldingScene: SKScene {
 
         refreshState()
         showHint(initialHintText, on: hintLabel)
+
+        tutorialActive = GameState.shared.currentDay == 1
+            && isFoldingReady
+            && GameState.shared.itemProgress.allSatisfy { !$0.isFolded }
+            && !UserDefaults.standard.bool(forKey: Self.tutorialSeenKey)
+        if tutorialActive {
+            showSpotlightTutorial(around: [basket], caption: Loc.t(.tutorialFoldingBasket))
+        }
     }
 
     private var isFoldingReady: Bool { GameState.shared.isReadyForFolding }
@@ -250,7 +270,7 @@ class FoldingScene: SKScene {
 
         for (direction, position, rotation) in configs {
             let arrow = SKSpriteNode(imageNamed: "arrow-right")
-            arrow.size = CGSize(width: 38, height: 38)
+            arrow.size = arrowSize
             arrow.position = position
             arrow.zRotation = rotation
             arrow.alpha = 0.3
@@ -294,6 +314,12 @@ class FoldingScene: SKScene {
 
         if currentState == 5 {
             showHint(Loc.t(.foldingHintTieRope), on: hintLabel)
+
+            if tutorialActive {
+                tutorialActive = false
+                UserDefaults.standard.set(true, forKey: Self.tutorialSeenKey)
+                showSpotlightTutorial(around: [rope, leafFront], caption: Loc.t(.tutorialFoldingRope))
+            }
         }
     }
 
@@ -356,6 +382,8 @@ class FoldingScene: SKScene {
             }
             return
         }
+
+        dismissSpotlightTutorialIfTargetTapped(at: location)
 
         if isFoldingReady, !clothesPlaced, clothesDragIcon.frame.insetBy(dx: -10, dy: -10).contains(location) || basket.contains(location) {
             isDraggingClothes = true
@@ -439,8 +467,28 @@ class FoldingScene: SKScene {
         leafBack.run(.sequence([.scale(to: 1.05, duration: 0.1), .scale(to: 1.0, duration: 0.1)]))
         leafFront.run(.sequence([.scale(to: 1.05, duration: 0.1), .scale(to: 1.0, duration: 0.1)]))
 
+        // The "swipe to fold" tutorial step only needs to survive until the player proves they
+        // understood it — clear it the moment the first direction succeeds, rather than leaving
+        // it up through the remaining three swipes.
+        let isFirstDirection = currentState == 1
         currentState += 1
         refreshState()
+
+        if tutorialActive, isFirstDirection {
+            dismissSpotlightTutorial()
+            setArrowsTintedForTutorial(false)
+        }
+    }
+
+    /// Tints every arrow white and bumps it up to `arrowHighlightedSize` (or reverts both) — used
+    /// to keep the arrow visible and readable while `showSpotlightTutorial` dims the rest of the
+    /// scene behind it; at their normal black/38pt appearance they're nearly impossible to see.
+    private func setArrowsTintedForTutorial(_ highlighted: Bool) {
+        for arrow in arrows.values {
+            arrow.color = .white
+            arrow.colorBlendFactor = highlighted ? 1.0 : 0.0
+            arrow.size = highlighted ? arrowHighlightedSize : arrowSize
+        }
     }
 
     private func isCorrectSwipe(dx: CGFloat, dy: CGFloat) -> Bool {
@@ -492,6 +540,13 @@ class FoldingScene: SKScene {
 
         refreshState()
         showHint(Loc.t(.foldingHintSwipeToFold), on: hintLabel)
+
+        if tutorialActive {
+            showSpotlightTutorial(around: Array(arrows.values), caption: Loc.t(.tutorialFoldingDirection))
+            // The arrow icon is drawn in black, which all but disappears against the spotlight's
+            // dimmed backdrop — tint it to the white highlight color for as long as it's spotlighted.
+            setArrowsTintedForTutorial(true)
+        }
     }
 
     // MARK: - Rope drag

@@ -23,16 +23,15 @@ struct CustomerModel {
     let customerIndexInDay: Int
 
     var orderText: String {
-        let soapName = requestedSoap.rawValue.uppercased()
-        
+        let isRose = requestedSoap == .rose
+        let soapDisplayName = Loc.t(isRose ? .soapDisplayNameRose : .soapDisplayNameSoapFruit)
+
         let dialogues = [
-            "\(soapName). QUICK. ME WAIT.",
-            "WASH FAST! USE \(soapName)!",
-            "DIRTY CLOTHES. GIVE \(soapName).",
-            "ME WANT \(soapName) SOAP!",
-            "USE \(soapName)! MAKE CLEAN!"
+            String(format: Loc.t(.customerOrderQuickWait), soapDisplayName),
+            String(format: Loc.t(.customerOrderCleanGood), soapDisplayName),
+            Loc.t(isRose ? .customerOrderSmellRose : .customerOrderSmellSoapFruit)
         ]
-        
-        return dialogues.randomElement() ?? "WASH PLS."
+
+        return dialogues.randomElement()!
     }
 }

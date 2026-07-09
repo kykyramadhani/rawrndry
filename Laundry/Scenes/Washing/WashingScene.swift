@@ -18,6 +18,15 @@ class WashingScene: SKScene {
     private var rightBasketPiles: SKSpriteNode!
     private var helpButton: SKSpriteNode!
     private var hintLabel: SKLabelNode!
+    private var chevronRight: SKSpriteNode!
+
+    /// Set once ever after the spotlight tutorial's final ("tap the arrow") step is shown, so
+    /// this walkthrough — gated to Day 1's very first item — never replays on later orders.
+    private static let tutorialSeenKey = TutorialFlag.washingSpotlight.rawValue
+
+    /// True for the entire first-ever wash, from didMove until the final step fires — gates
+    /// each of the five state-transition hooks below without re-checking UserDefaults each time.
+    private var tutorialActive = false
 
     // Soap holders (static) and the node currently being dragged from one
     private var soapHolder1: SKSpriteNode!
@@ -85,7 +94,7 @@ class WashingScene: SKScene {
         setupClothesOnSteps()
         setupSoaps()
         setupRightBasket()
-        addStationArrows(current: .washing)
+        chevronRight = addStationArrows(current: .washing).right
 
         // STANDARD INSTRUCTION BUTTON
         helpButton = makeButton(
@@ -106,6 +115,13 @@ class WashingScene: SKScene {
 
         updateBasketPile()
         restoreCleanBasketIfNeeded()
+
+        tutorialActive = GameState.shared.currentDay == 1
+            && currentItemIndex == 0
+            && !UserDefaults.standard.bool(forKey: Self.tutorialSeenKey)
+        if tutorialActive {
+            showSpotlightTutorial(around: [leftBasket, basketPiles], caption: Loc.t(.tutorialWashingBasket))
+        }
 
         AudioManager.shared.stopThemeBGM()
         AudioManager.shared.playRiverAmbience()
@@ -273,6 +289,12 @@ class WashingScene: SKScene {
         selectedSoapType = nil
 
         currentState = .readyToScrub
+
+        // "The clothes and the stone" — spreadClothes sits directly on the washing stone
+        // (the stone itself is baked into the background art, with no separate node to target).
+        if tutorialActive, currentItemIndex == 0 {
+            showSpotlightTutorial(around: [spreadClothes], caption: Loc.t(.tutorialWashingScrub))
+        }
     }
 
     private func finishScrubbing() {
@@ -281,6 +303,10 @@ class WashingScene: SKScene {
         AudioManager.shared.stopScrubbing()
         HapticsManager.shared.stopScrubbing()
         showHint(Loc.t(.washingHintClean), on: hintLabel)
+
+        if tutorialActive, currentItemIndex == 0 {
+            showSpotlightTutorial(around: [spreadClothes, rightBasket], caption: Loc.t(.tutorialWashingCleanBasket))
+        }
     }
 
     private func moveToCleanBasket() {
@@ -305,6 +331,12 @@ class WashingScene: SKScene {
 
         if currentItemIndex >= itemsToWash.count {
             showHint(Loc.t(.washingHintNiceClean), on: hintLabel)
+
+            if tutorialActive {
+                tutorialActive = false
+                UserDefaults.standard.set(true, forKey: Self.tutorialSeenKey)
+                showSpotlightTutorial(around: chevronRight, caption: Loc.t(.tutorialWashingNextArrow))
+            }
         }
     }
 
@@ -330,6 +362,8 @@ class WashingScene: SKScene {
             }
             return
         }
+
+        dismissSpotlightTutorialIfTargetTapped(at: location)
 
         switch currentState {
         case .idle:
@@ -458,6 +492,10 @@ class WashingScene: SKScene {
 
                     beginWaitingForSoap()
                     revealNextBasketItem()
+
+                    if tutorialActive, currentItemIndex == 0 {
+                        showSpotlightTutorial(around: [soapHolder1, soapHolder2], caption: Loc.t(.tutorialWashingSoap))
+                    }
                 }
             } else {
                 pickedClothes.isHidden = true

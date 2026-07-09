@@ -8,6 +8,14 @@
 //  setup, and the standard button-tap feedback animation.
 
 import SpriteKit
+import CoreImage
+
+/// The overlay node used by `showSpotlightTutorial` — a plain `SKNode` can't carry the stored
+/// `bumpedTargets` list needed to restore each highlighted node's zPosition once the spotlight
+/// moves on or is dismissed.
+private final class SpotlightOverlayNode: SKNode {
+    var bumpedTargets: [(target: SKNode, originalZPosition: CGFloat)] = []
+}
 
 extension SKScene {
 
@@ -249,6 +257,170 @@ extension SKScene {
             childNode(withName: "tipPopupOverlay")?.removeFromParent()
         }
         return true
+    }
+
+    /// Dims the whole scene and makes every node in `targets` glow with a slow, stable-alpha
+    /// breathing halo, with an optional caption speech bubble above them — a spotlight-style
+    /// tutorial pointing at whatever the player should act on next. Pass `caption: nil` for a
+    /// glow-only beat (e.g. to draw the eye first, before revealing the caption a moment later
+    /// with a follow-up call). Purely visual: each target's zPosition is bumped above the dim
+    /// rect so it reads as highlighted rather than dimmed, but touch handling is untouched, so
+    /// tapping a target still works exactly as before. Replacing an active spotlight (calling
+    /// this again, or `dismissSpotlightTutorial()`) restores every bumped target's original
+    /// zPosition first — call it whenever a later tutorial step supersedes an earlier one.
+    @discardableResult
+    func showSpotlightTutorial(around targets: [SKNode], caption: String? = nil) -> SKNode {
+        dismissSpotlightTutorial()
+        guard !targets.isEmpty else { return SKNode() }
+
+        let overlayZ: CGFloat = 400
+        let edgeMargin: CGFloat = 16
+
+        let overlay = SpotlightOverlayNode()
+        overlay.name = "spotlightTutorialOverlay"
+        overlay.zPosition = overlayZ
+        overlay.alpha = 0
+        addChild(overlay)
+
+        let dim = SKSpriteNode(color: UIColor.black.withAlphaComponent(0.62), size: size)
+        dim.position = sceneCenter
+        dim.zPosition = 0
+        overlay.addChild(dim)
+
+        var unionFrame: CGRect?
+        for target in targets {
+            let frame = target.calculateAccumulatedFrame()
+            unionFrame = unionFrame.map { $0.union(frame) } ?? frame
+
+            addBreathingGlow(for: target, frame: frame, to: overlay)
+
+            // Bumped above the dim rect so it reads as spotlighted instead of dimmed. Restored
+            // by dismissSpotlightTutorial() (or the next showSpotlightTutorial call) via
+            // overlay.bumpedTargets, never left stuck at this elevated zPosition.
+            overlay.bumpedTargets.append((target, target.zPosition))
+            target.zPosition = overlayZ + 2
+        }
+
+        if let caption {
+            let bubbleSize = CGSize(width: min(size.width * 0.72, 320), height: 96)
+            let anchor = unionFrame ?? CGRect(origin: sceneCenter, size: .zero)
+
+            // Prefer sitting above the target, but flip below it if there isn't enough headroom —
+            // and always clamp both axes so the bubble (a big, roughly screen-width sprite) never
+            // extends past the scene edges no matter how close to a corner its target sits.
+            let bounds = CGRect(x: sceneCenter.x - size.width / 2, y: sceneCenter.y - size.height / 2,
+                                 width: size.width, height: size.height)
+            let halfBubbleW = bubbleSize.width / 2
+            let halfBubbleH = bubbleSize.height / 2
+            let gap: CGFloat = 24
+
+            let spaceAbove = bounds.maxY - anchor.maxY
+            let placeAbove = spaceAbove >= bubbleSize.height + gap + edgeMargin
+            let rawY = placeAbove ? anchor.maxY + halfBubbleH + gap : anchor.minY - halfBubbleH - gap
+
+            let clampedX = min(max(anchor.midX, bounds.minX + halfBubbleW + edgeMargin), bounds.maxX - halfBubbleW - edgeMargin)
+            let clampedY = min(max(rawY, bounds.minY + halfBubbleH + edgeMargin), bounds.maxY - halfBubbleH - edgeMargin)
+
+            let bubble = SKNode()
+            bubble.position = CGPoint(x: clampedX, y: clampedY)
+            bubble.zPosition = 5
+            bubble.setScale(0)
+            overlay.addChild(bubble)
+
+            let bubbleBg = SKSpriteNode(imageNamed: AssetName.UI.speechBubble)
+            bubbleBg.size = bubbleSize
+            bubble.addChild(bubbleBg)
+
+            let label = SKLabelNode(fontNamed: AssetName.Font.comica)
+            label.text = caption.uppercased()
+            label.fontSize = 18
+            label.fontColor = UIColor(red: 143.0/255.0, green: 43.0/255.0, blue: 18.0/255.0, alpha: 1.0)
+            label.numberOfLines = 0
+            label.preferredMaxLayoutWidth = bubbleSize.width * 0.82
+            label.verticalAlignmentMode = .center
+            label.horizontalAlignmentMode = .center
+            label.zPosition = 1
+            bubble.addChild(label)
+
+            bubble.run(.sequence([
+                .wait(forDuration: 0.15),
+                .scale(to: 1.05, duration: 0.25),
+                .scale(to: 1.0, duration: 0.1)
+            ]))
+        }
+
+        overlay.run(.fadeIn(withDuration: 0.25))
+
+        return overlay
+    }
+
+    /// Single-target convenience for `showSpotlightTutorial(around:caption:)`.
+    @discardableResult
+    func showSpotlightTutorial(around target: SKNode, caption: String? = nil) -> SKNode {
+        showSpotlightTutorial(around: [target], caption: caption)
+    }
+
+    /// Removes the active spotlight tutorial overlay, if any, restoring every target it bumped
+    /// back to its original zPosition. Safe to call even when nothing is showing.
+    func dismissSpotlightTutorial() {
+        guard let overlay = childNode(withName: "spotlightTutorialOverlay") as? SpotlightOverlayNode else { return }
+        overlay.bumpedTargets.forEach { $0.target.zPosition = $0.originalZPosition }
+        overlay.removeFromParent()
+    }
+
+    /// If the active spotlight tutorial is showing and `location` lands on whatever it's
+    /// currently highlighting, dismisses it — closing that step the instant the player actually
+    /// taps the thing it was pointing at, instead of waiting for the next step (or scene
+    /// transition) to clear it. Doesn't consume the touch — call this alongside, not instead
+    /// of, the scene's own hit-testing for `location` so the tap still performs its real action.
+    func dismissSpotlightTutorialIfTargetTapped(at location: CGPoint) {
+        guard let overlay = childNode(withName: "spotlightTutorialOverlay") as? SpotlightOverlayNode else { return }
+        guard overlay.bumpedTargets.contains(where: { $0.target.contains(location) }) else { return }
+        dismissSpotlightTutorial()
+    }
+
+    /// A stable white glow standing in for a glow texture we don't have: a tinted,
+    /// additively-blended copy of `target`'s own texture (so it hugs its exact silhouette
+    /// rather than a generic shape), softened with a Gaussian blur. Alpha stays constant —
+    /// only its size slowly breathes from small to large and back, on a loop.
+    private func addBreathingGlow(for target: SKNode, frame: CGRect, to overlay: SKNode) {
+        guard frame.width > 0, frame.height > 0 else { return }
+
+        let glowColor = UIColor.white
+        let glowSize = CGSize(width: frame.width * 1.25, height: frame.height * 1.25)
+
+        let glowSprite: SKSpriteNode
+        if let spriteTarget = target as? SKSpriteNode, let texture = spriteTarget.texture {
+            glowSprite = SKSpriteNode(texture: texture)
+        } else {
+            glowSprite = SKSpriteNode(color: glowColor, size: glowSize)
+        }
+        glowSprite.size = glowSize
+        glowSprite.color = glowColor
+        glowSprite.colorBlendFactor = 1.0
+        glowSprite.blendMode = .add
+
+        // Floored so small targets (e.g. the ~38pt fold-direction arrows) still get a clearly
+        // visible bloom — 12% of their own size blurs down to almost nothing at that scale.
+        let blurRadius = max(max(frame.width, frame.height) * 0.12, 8)
+
+        let blur = SKEffectNode()
+        blur.shouldRasterize = true
+        blur.filter = CIFilter(name: "CIGaussianBlur", parameters: [
+            "inputRadius": blurRadius
+        ])
+        blur.alpha = 0.85
+        blur.position = CGPoint(x: frame.midX, y: frame.midY)
+        blur.zPosition = 1
+        blur.setScale(0.96)
+        blur.addChild(glowSprite)
+        overlay.addChild(blur)
+
+        let grow = SKAction.scale(to: 1.04, duration: 1.6)
+        grow.timingMode = .easeInEaseOut
+        let shrink = SKAction.scale(to: 0.96, duration: 1.6)
+        shrink.timingMode = .easeInEaseOut
+        blur.run(.repeatForever(.sequence([grow, shrink])))
     }
 
     /// A rounded track + fill pair for showing scrub/task progress. Update the fill with `setProgressBarFill`.

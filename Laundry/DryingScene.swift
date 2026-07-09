@@ -37,6 +37,30 @@ class DryingScene: SKScene {
     private var blowBarFill: SKShapeNode!
     private var blowPercentLabel: SKLabelNode!
 
+    /// Set once ever after the "drag to the dry basket" step is shown, so this walkthrough —
+    /// gated to Day 1's very first order — never replays on later orders.
+    private static let tutorialSeenKey = TutorialFlag.dryingSpotlight.rawValue
+
+    /// True for the entire first-ever dry, from didMove until the final step fires — gates
+    /// each of the tutorial hooks below without re-checking UserDefaults each time.
+    private var tutorialActive = false
+
+    /// True once every washed item has been hung (none left waiting in the wet basket) —
+    /// the trigger for the "blow into the mic" tutorial step.
+    private var allWashedItemsHungOrDried: Bool {
+        !GameState.shared.itemProgress.contains { $0.isWashed && !$0.isHungToDry && !$0.isDried }
+    }
+
+    /// True while the "blow into the mic" spotlight is showing — lets a tap anywhere (not just
+    /// on the highlighted clothes) or the first detected blow close it early, instead of it
+    /// sitting there until every item finishes drying.
+    private var isBlowTutorialShowing = false
+
+    /// True once the "blow into the mic" spotlight has been shown (and possibly already
+    /// dismissed) this order — keeps it from popping up a second time if the player un-hangs
+    /// and re-hangs an item after dismissing it.
+    private var hasShownBlowTutorial = false
+
     // MARK: - Audio & Sound Analysis Properties
     private let micEngine = AVAudioEngine()
     private var micPermissionGranted = false
@@ -127,6 +151,14 @@ class DryingScene: SKScene {
 
         addSettingsButton()
         addHomeButton()
+
+        tutorialActive = GameState.shared.currentDay == 1
+            && GameState.shared.itemProgress.contains { $0.isWashed }
+            && GameState.shared.itemProgress.allSatisfy { !$0.isHungToDry && !$0.isDried }
+            && !UserDefaults.standard.bool(forKey: Self.tutorialSeenKey)
+        if tutorialActive {
+            showSpotlightTutorial(around: [basketNode, basketPiles], caption: Loc.t(.tutorialDryingBasket))
+        }
 
         setupDryingInput()
     }
@@ -552,6 +584,7 @@ class DryingScene: SKScene {
             if !isOverblowing {
                 if shouldLog { print("💨 [Action] OVERBLOW TRIGGERED -> dropOverblownItems()") }
                 isOverblowing = true
+                dismissBlowTutorialIfShowing()
                 dropOverblownItems()
             }
         } else if power > blowThreshold {
@@ -559,6 +592,7 @@ class DryingScene: SKScene {
             if !isBlowing {
                 if shouldLog { print("🌬️ [Action] BLOW DETECTED -> advanceDrying()") }
                 isBlowing = true
+                dismissBlowTutorialIfShowing()
                 advanceDrying()
             }
         } else {
@@ -589,6 +623,15 @@ class DryingScene: SKScene {
         if GameState.shared.isFullyDried {
             showStatus("All dry!")
             run(.sequence([.wait(forDuration: 1.5), .run { [weak self] in self?.hideStatus() }]))
+
+            if tutorialActive {
+                tutorialActive = false
+                UserDefaults.standard.set(true, forKey: Self.tutorialSeenKey)
+                var targets: [SKNode] = itemNodes.compactMap { $0 }
+                targets.append(dryBasketNode)
+                targets.append(dryBasketPiles)
+                showSpotlightTutorial(around: targets, caption: Loc.t(.tutorialDryingToBasket))
+            }
         }
     }
 
@@ -630,22 +673,28 @@ class DryingScene: SKScene {
             let variant = GameState.shared.itemProgress[index].dryingVariant
             node.texture = SKTexture(imageNamed: "dryingClothesFallen\(variant)")
             node.zPosition = 4
+            node.position.y -= 15
 
+            // Sit on the ground showing the fallen sprite for a beat before dropping back into
+            // the basket, so the player actually registers that it fell instead of it vanishing
+            // near-instantly.
             let drop = SKAction.group([
                 .moveBy(x: 0, y: -60, duration: 0.35),
                 .fadeOut(withDuration: 0.35),
                 .rotate(byAngle: .pi / 6, duration: 0.35)
             ])
-            node.run(.sequence([drop, .removeFromParent()]))
-            itemNodes[index] = nil
-            freeSlot(for: index)
+            node.run(.sequence([.wait(forDuration: 2.0), drop, .removeFromParent()])) { [weak self] in
+                guard let self else { return }
+                self.itemNodes[index] = nil
+                self.freeSlot(for: index)
 
-            GameState.shared.itemProgress[index].isHungToDry = false
-            GameState.shared.itemProgress[index].dryProgress = 0
+                GameState.shared.itemProgress[index].isHungToDry = false
+                GameState.shared.itemProgress[index].dryProgress = 0
+
+                self.updateBasketPilesVisibility()
+                self.updateBlowBar()
+            }
         }
-
-        updateBasketPilesVisibility()
-        updateBlowBar()
     }
 
     /// Jolts the camera through a quick decaying zigzag — since the camera defines the
@@ -685,6 +734,15 @@ class DryingScene: SKScene {
         statusLabel.run(.fadeOut(withDuration: 0.2))
     }
 
+    /// Closes the "blow into the mic" spotlight the moment the player either taps anywhere or
+    /// actually starts blowing, instead of leaving it up until every item finishes drying. Safe
+    /// to call unconditionally — a no-op once it's already been dismissed.
+    private func dismissBlowTutorialIfShowing() {
+        guard isBlowTutorialShowing else { return }
+        isBlowTutorialShowing = false
+        dismissSpotlightTutorial()
+    }
+
     // MARK: - Touch handling
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -716,6 +774,9 @@ class DryingScene: SKScene {
             }
             return
         }
+
+        dismissSpotlightTutorialIfTargetTapped(at: location)
+        dismissBlowTutorialIfShowing()
 
         guard dragState == nil else { return }
 
@@ -818,6 +879,16 @@ class DryingScene: SKScene {
             if rackZone.contains(position) {
                 GameState.shared.itemProgress[index].isHungToDry = true
                 hangItem(index: index)
+
+                if tutorialActive, allWashedItemsHungOrDried, !hasShownBlowTutorial {
+                    if SettingsManager.shared.microphoneEnabled {
+                        showSpotlightTutorial(around: itemNodes.compactMap { $0 }, caption: Loc.t(.tutorialDryingBlow))
+                        isBlowTutorialShowing = true
+                        hasShownBlowTutorial = true
+                    } else if let leafRopeNode {
+                        showSpotlightTutorial(around: leafRopeNode, caption: Loc.t(.tutorialDryingLeafSwipe))
+                    }
+                }
             }
         case .rope:
             let progress = GameState.shared.itemProgress[index]

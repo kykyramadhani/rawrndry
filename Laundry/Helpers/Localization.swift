@@ -28,6 +28,21 @@ enum LocKey: String {
     case onboardingStep2
     case onboardingStep3
 
+    // Spotlight tutorial captions, shown once automatically (Day 1, first customer only)
+    case tutorialFrontDeskDirtyClothes
+    case tutorialWashingBasket
+    case tutorialWashingSoap
+    case tutorialWashingScrub
+    case tutorialWashingCleanBasket
+    case tutorialWashingNextArrow
+    case tutorialDryingBasket
+    case tutorialDryingBlow
+    case tutorialDryingLeafSwipe
+    case tutorialDryingToBasket
+    case tutorialFoldingBasket
+    case tutorialFoldingDirection
+    case tutorialFoldingRope
+
     // Info-button tip text, per scene
     case infoCustomer
     case infoFolding
@@ -54,6 +69,14 @@ enum LocKey: String {
     case dryingHintMicStartFailed
     case washingHintClean
     case washingHintNiceClean
+
+    // Customer order speech bubble, per requested soap fragrance
+    case soapDisplayNameRose
+    case soapDisplayNameSoapFruit
+    case customerOrderQuickWait
+    case customerOrderCleanGood
+    case customerOrderSmellRose
+    case customerOrderSmellSoapFruit
 }
 
 enum Loc {
@@ -76,16 +99,69 @@ enum Loc {
         ],
 
         .onboardingStep1: [
-            .en: "Rawr rawrrr rawrr (hi i'm raptor)",
-            .id: "Rawr rawrrr rawrr (hai aku raptor)"
+            .en: "rawr rawrrr rawrr (hi i'm raptor)",
+            .id: "rawr rawrrr rawrr (hai aku raptor)"
         ],
         .onboardingStep2: [
-            .en: "Rawrr rawrr rawr rawrr (help me manage my laundry business)",
-            .id: "Rawrr rawrr rawr rawrr (bantu aku mengelola bisnis cucian)"
+            .en: "rawrr rawrr rawr rawrr (help me manage my laundry business)",
+            .id: "rawrr rawrr rawr rawrr (bantu aku mengelola bisnis cucian)"
         ],
         .onboardingStep3: [
             .en: "Rawrrrrrrrr (the customer will came, take their dirty clothes, wash it, dry it, and fold it)",
             .id: "Rawrrrrrrrr (pelanggan akan datang, ambil baju kotor mereka, cuci, keringkan, dan lipat dengan rapi)"
+        ],
+
+        .tutorialFrontDeskDirtyClothes: [
+            .en: "Customer came! Click the dirty clothes to proceed to washing",
+            .id: "Pelanggan datang! Tekan baju kotornya untuk lanjut mencuci"
+        ],
+        .tutorialWashingBasket: [
+            .en: "Drag the clothes from the basket onto the stone to wash them",
+            .id: "Geser baju dari keranjang ke batu untuk mencuci"
+        ],
+        .tutorialWashingSoap: [
+            .en: "Pick and drag the right soap variant",
+            .id: "Pilih dan geser varian sabun yang tepat"
+        ],
+        .tutorialWashingScrub: [
+            .en: "Rub the clothes to wash them clean",
+            .id: "Usap baju untuk mencuci sampai bersih"
+        ],
+        .tutorialWashingCleanBasket: [
+            .en: "Put the clean clothes into the clean basket!",
+            .id: "Masukkan baju yang sudah bersih ke keranjang bersih!"
+        ],
+        .tutorialWashingNextArrow: [
+            .en: "Tap the arrow to move to the next scene!",
+            .id: "Klik panah untuk berganti scene!"
+        ],
+        .tutorialDryingBasket: [
+            .en: "Drag the clothes from the basket onto the line to dry them!",
+            .id: "Geser baju dari keranjang ke penjemuran untuk mengeringkan!"
+        ],
+        .tutorialDryingBlow: [
+            .en: "Blow into the microphone to dry the clothes! Don't blow too hard",
+            .id: "Tiup dari microphone untuk mengeringkan baju! Jangan tiup terlalu keras"
+        ],
+        .tutorialDryingLeafSwipe: [
+            .en: "Use the leaf to swipe and dry the clothes!",
+            .id: "Gunakan daun untuk geser dan mengeringkan!"
+        ],
+        .tutorialDryingToBasket: [
+            .en: "Drag the clothes from the line into the basket for the next step!",
+            .id: "Geser baju dari penjemuran ke keranjang untuk step berikutnya!"
+        ],
+        .tutorialFoldingBasket: [
+            .en: "Drag the clothes from the basket onto the banana leaf to wrap them!",
+            .id: "Geser baju dari keranjang ke daun pisang untuk membungkus!"
+        ],
+        .tutorialFoldingDirection: [
+            .en: "Swipe to fold, following the arrow",
+            .id: "Lipat dengan geser sesuai tanda panah"
+        ],
+        .tutorialFoldingRope: [
+            .en: "Use the rope to tie up the package",
+            .id: "Gunakan tali untuk membungkus"
         ],
 
         .infoCustomer: [
@@ -179,7 +255,14 @@ enum Loc {
         .washingHintNiceClean: [
             .en: "Nice and clean!",
             .id: "Bersih sekali!"
-        ]
+        ],
+
+        .soapDisplayNameRose: [.en: "ROSE", .id: "MAWAR"],
+        .soapDisplayNameSoapFruit: [.en: "SOAPFRUIT", .id: "BUAH LERAK"],
+        .customerOrderQuickWait: [.en: "%@. QUICK. ME WAIT.", .id: "%@. CEPAT. SAYA TUNGGU."],
+        .customerOrderCleanGood: [.en: "%@. CLEAN GOOD.", .id: "%@. CUCI BERSIH."],
+        .customerOrderSmellRose: [.en: "ROSE. SMELL NICE.", .id: "MAWAR. HARUM."],
+        .customerOrderSmellSoapFruit: [.en: "SOAPFRUIT. SMELL FRESH.", .id: "BUAH LERAK. SEGAR."]
     ]
 
     static func t(_ key: LocKey) -> String {

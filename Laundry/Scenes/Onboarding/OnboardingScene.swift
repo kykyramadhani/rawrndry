@@ -18,12 +18,22 @@ class OnboardingScene: SKScene {
 
     private var stepIndex = 0
 
+    private var raptor: SKSpriteNode!
     private var bubbleContainer: SKNode!
     private var bubbleLabel: SKLabelNode!
     private var actionButton: SKSpriteNode!
     private var actionLabel: SKLabelNode!
 
     private let plainTextBrown = UIColor(red: 143.0/255.0, green: 43.0/255.0, blue: 18.0/255.0, alpha: 1.0)
+
+    /// True while a line is still being typed out — gates touchesBegan so a tap fast-forwards
+    /// the line instead of hitting the (still-hidden) action button.
+    private var isTyping = false
+    private var currentFullText = ""
+
+    private let typingActionKey = "onboardingTypewriter"
+    private let raptorWiggleKey = "onboardingRaptorWiggle"
+    private let secondsPerCharacter: TimeInterval = 0.035
 
     override func didMove(to view: SKView) {
         self.anchorPoint = CGPoint(x: 0.5, y: 0.5)
@@ -49,7 +59,7 @@ class OnboardingScene: SKScene {
 
     private func setupRaptor() {
         let texture = SKTexture(imageNamed: AssetName.Character.raptor)
-        let raptor = SKSpriteNode(texture: texture)
+        raptor = SKSpriteNode(texture: texture)
 
         let targetWidth: CGFloat = 320
         raptor.setScale(targetWidth / texture.size().width)
@@ -101,8 +111,6 @@ class OnboardingScene: SKScene {
         let step = steps[index]
         let isLast = index == steps.count - 1
 
-        bubbleLabel.text = Loc.t(step.text).uppercased()
-
         actionButton.texture = SKTexture(imageNamed: isLast ? AssetName.UI.buttonMain : AssetName.UI.btnSecondary)
         actionButton.size = isLast ? CGSize(width: 150, height: 56) : CGSize(width: 110, height: 48)
         actionButton.position = CGPoint(
@@ -112,11 +120,74 @@ class OnboardingScene: SKScene {
 
         actionLabel.text = Loc.t(step.buttonLabel)
         actionLabel.fontColor = isLast ? .white : .black
+
+        startTyping(Loc.t(step.text).uppercased())
+    }
+
+    // MARK: - Typewriter effect
+
+    /// Reveals `text` one character at a time, wiggling the raptor for the duration — the
+    /// action button stays hidden until the line finishes, then fades in. Cancel early with
+    /// `skipTyping()` (e.g. on tap) to jump straight to the full line.
+    private func startTyping(_ text: String) {
+        bubbleContainer.removeAction(forKey: typingActionKey)
+
+        currentFullText = text
+        isTyping = true
+        bubbleLabel.text = ""
+        actionButton.alpha = 0
+
+        startRaptorWiggle()
+
+        var typeActions: [SKAction] = []
+        for count in 1...max(text.count, 1) {
+            typeActions.append(.run { [weak self] in
+                guard let self else { return }
+                let endIndex = text.index(text.startIndex, offsetBy: count)
+                self.bubbleLabel.text = String(text[..<endIndex])
+            })
+            typeActions.append(.wait(forDuration: secondsPerCharacter))
+        }
+        typeActions.append(.run { [weak self] in self?.finishTyping() })
+
+        bubbleContainer.run(.sequence(typeActions), withKey: typingActionKey)
+    }
+
+    /// Jumps straight to the fully-revealed line — used when the player taps while still typing.
+    private func skipTyping() {
+        guard isTyping else { return }
+        bubbleContainer.removeAction(forKey: typingActionKey)
+        finishTyping()
+    }
+
+    private func finishTyping() {
+        isTyping = false
+        bubbleLabel.text = currentFullText
+        stopRaptorWiggle()
+        actionButton.run(.fadeIn(withDuration: 0.2))
+    }
+
+    private func startRaptorWiggle() {
+        raptor.removeAction(forKey: raptorWiggleKey)
+        let tiltLeft = SKAction.rotate(toAngle: -0.05, duration: 0.12, shortestUnitArc: true)
+        let tiltRight = SKAction.rotate(toAngle: 0.05, duration: 0.12, shortestUnitArc: true)
+        let wiggle = SKAction.sequence([tiltLeft, tiltRight])
+        raptor.run(.repeatForever(wiggle), withKey: raptorWiggleKey)
+    }
+
+    private func stopRaptorWiggle() {
+        raptor.removeAction(forKey: raptorWiggleKey)
+        raptor.run(.rotate(toAngle: 0, duration: 0.1))
     }
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let touch = touches.first else { return }
         let location = touch.location(in: self)
+
+        if isTyping {
+            skipTyping()
+            return
+        }
 
         guard tappedNodeName(at: location) == "onboardingAction" else { return }
 

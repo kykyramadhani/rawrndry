@@ -28,9 +28,9 @@ class CustomerScene: SKScene {
     private let plainTextColor = UIColor(red: 255.0/255.0, green: 247.0/255.0, blue: 234.0/255.0, alpha: 1.0)
     private let plainTextBrown = UIColor(red: 143.0/255.0, green: 43.0/255.0, blue: 18.0/255.0, alpha: 1.0)
     
-    /// Set once per app run when the very first customer of Day 1 shows the auto-opened
-    /// tutorial popup, so revisiting this scene later never shows it again.
-    private static let tutorialSeenKey = "hasSeenFrontDeskTutorial"
+    /// Set once ever when the very first customer of Day 1 shows the auto-opened spotlight
+    /// tutorial, so revisiting this scene later never shows it again.
+    private static let tutorialSeenKey = TutorialFlag.frontDeskSpotlight.rawValue
 
     override func didMove(to view: SKView) {
         self.anchorPoint = CGPoint(x: 0.5, y: 0.5)
@@ -62,8 +62,9 @@ class CustomerScene: SKScene {
         setupLaundryBag()
         setupSpeechBubble()
 
-        animateArrival()
-        showFirstTimeTutorialIfNeeded()
+        animateArrival { [weak self] in
+            self?.showFirstTimeTutorialIfNeeded()
+        }
 
         AudioManager.shared.stopRiverAmbience()
         AudioManager.shared.playThemeBGM()
@@ -93,7 +94,7 @@ class CustomerScene: SKScene {
         guard !UserDefaults.standard.bool(forKey: Self.tutorialSeenKey) else { return }
 
         UserDefaults.standard.set(true, forKey: Self.tutorialSeenKey)
-        showTipPopup(text: Loc.t(.infoCustomer))
+        showSpotlightTutorial(around: laundryBag, caption: Loc.t(.tutorialFrontDeskDirtyClothes))
     }
     
     private func setupBackground() {
@@ -212,30 +213,33 @@ class CustomerScene: SKScene {
         addChild(bubbleContainer)
     }
     
-    private func animateArrival() {
+    private func animateArrival(completion: @escaping () -> Void = {}) {
         let walkIn = SKAction.moveTo(x: self.size.width * finalCustomerPosition.x, duration: 1.0)
         walkIn.timingMode = .easeOut
-        
+
         let bagAppear = SKAction.fadeAlpha(to: 1.0, duration: 0.2)
         let bagDrop = SKAction.moveBy(x: 0, y: -20, duration: 0.2)
         let bagSpawn = SKAction.group([bagAppear, bagDrop])
-        
+
         let popUp = SKAction.scale(to: 1.0, duration: 0.3)
         let popBounce = SKAction.scale(to: 0.95, duration: 0.1)
         let bubbleAnim = SKAction.sequence([popUp, popBounce, SKAction.scale(to: 1.0, duration: 0.1)])
-        
+
         customerNode.run(SKAction.sequence([walkIn]))
-        
+
         let sceneAnimations = SKAction.sequence([
             SKAction.wait(forDuration: 1.0),
             SKAction.run { self.laundryBag.run(bagSpawn) },
             SKAction.wait(forDuration: 0.3),
-            SKAction.run { self.bubbleContainer.run(bubbleAnim) }
+            SKAction.run { self.bubbleContainer.run(bubbleAnim) },
+            // Matches bubbleAnim's own duration (0.3 + 0.1 + 0.1) so `completion` only fires
+            // once the customer/bag/bubble arrival is fully settled on screen.
+            SKAction.wait(forDuration: 0.5)
         ])
         
-        self.run(sceneAnimations)
+        self.run(sceneAnimations, completion: completion)
     }
-    
+
     private func animateFly(fly: SKSpriteNode, duration: TimeInterval, offset: CGFloat) {
         let moveUp = SKAction.moveBy(x: offset, y: offset, duration: duration)
         let moveDown = SKAction.moveBy(x: -offset, y: -offset, duration: duration)
@@ -264,6 +268,8 @@ class CustomerScene: SKScene {
         if handleHomeConfirmPopupTap(at: location) { return }
         if handleSettingsButtonTap(nodeName: tappedNodeName(at: location)) { return }
         if handleHomeButtonTap(nodeName: tappedNodeName(at: location)) { return }
+
+        dismissSpotlightTutorialIfTargetTapped(at: location)
 
         if chevronBtn.contains(location) {
             self.isUserInteractionEnabled = false
