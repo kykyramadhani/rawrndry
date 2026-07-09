@@ -71,13 +71,11 @@ class WashingScene: SKScene {
         setupBackground()
         
         // STANDARD HUD
-//        addCurrencyHUD(
-//            topLeftOrigin: CGPoint(x: size.width * 0.05, y: size.height * 0.90),
-//            day: GameState.shared.currentDay,
-//            coins: GameState.shared.score
-//        )
-        addCurrencyHUD(topLeftOrigin: CGPoint(x: size.width * 0.05, y: size.height * 0.90), day: GameState.shared.currentDay, coins: GameState.shared.score)
-        
+        // This scene uses a centered anchorPoint (see above), so HUD/button positions are
+        // offsets from scene-center rather than the bottom-left-anchor fractions used in the
+        // other scenes (e.g. size.width * 0.85 for a "near the right edge" button here).
+        addCurrencyHUD(topLeftOrigin: CGPoint(x: -size.width * 0.45, y: size.height * 0.40), day: GameState.shared.currentDay, coins: GameState.shared.score)
+
         setupLeftBasket()
         setupClothesOnSteps()
         setupSoaps()
@@ -85,17 +83,15 @@ class WashingScene: SKScene {
         addStationArrows(current: .washing)
 
         // STANDARD INSTRUCTION BUTTON
-        addCurrencyHUD(topLeftOrigin: CGPoint(x: -self.size.width * 0.45, y: self.size.height * 0.40), day: GameState.shared.currentDay, coins: GameState.shared.score)
-
         helpButton = makeButton(
             imageNamed: AssetName.UI.btnInstruction,
-            position: CGPoint(x: size.width * 0.85, y: size.height * 0.90),
+            position: CGPoint(x: size.width * 0.35, y: size.height * 0.40),
             scale: 0.8,
             nodeName: "help"
         )
 
         // STANDARD HINT LABEL
-        hintLabel = makeHintLabel(position: CGPoint(x: size.width / 2, y: size.height * 0.08))
+        hintLabel = makeHintLabel(position: CGPoint(x: 0, y: -size.height * 0.42))
 
         // STANDARD SETTINGS BUTTON
         addSettingsButton()
