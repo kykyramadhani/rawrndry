@@ -37,6 +37,7 @@ enum LocKey: String {
 
     // Transient hint banners, per scene
     case washingNoSoap
+    case WashingWrongSoap
     case foldingHintNotWashed
     case foldingHintNotDried
     case foldingHintDragClothes
@@ -113,6 +114,10 @@ enum Loc {
         .washingNoSoap: [
             .en: "Add some soap first!",
             .id: "Tambahkan sabun dulu!"
+        ],
+        .WashingWrongSoap: [
+            .en: "Not the right fragance!",
+            .id: "Bukan itu pewanginya!"
         ],
         .foldingHintNotWashed: [
             .en: "Wash the clothes first!",

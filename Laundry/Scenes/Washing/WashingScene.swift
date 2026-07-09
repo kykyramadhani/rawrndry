@@ -55,7 +55,7 @@ class WashingScene: SKScene {
     private let basketSize = CGSize(width: 120, height: 120)
     private let pickedClothesSize = CGSize(width: 90, height: 90)
     private let spreadClothesSize = CGSize(width: 250, height: 250)
-    private let spreadClothesPosition = CGPoint(x: -0.02, y: -0.02)
+    private let spreadClothesPosition = CGPoint(x: -0.03, y: -0.08)
 
     override func didMove(to view: SKView) {
         self.anchorPoint = CGPoint(x: 0.5, y: 0.5)
@@ -225,17 +225,11 @@ class WashingScene: SKScene {
         let randomStainID = Int.random(in: 1...4)
         let stain = SKSpriteNode(imageNamed: AssetName.Item.washingStain(id: randomStainID))
 
-        stain.size = CGSize(width: 60, height: 60)
-        stain.zRotation = CGFloat.random(in: 0...(2 * .pi))
+        stain.size = CGSize(width: spreadClothesSize.width, height: spreadClothesSize.height)
 
-        let safeAreaWidth = spreadClothesSize.width * 0.3
-        let safeAreaHeight = spreadClothesSize.height * 0.3
-
-        let randomX = CGFloat.random(in: -safeAreaWidth...safeAreaWidth)
-        let randomY = CGFloat.random(in: -safeAreaHeight...safeAreaHeight)
-
-        stain.position = CGPoint(x: randomX, y: randomY)
+        stain.position = CGPoint(x: 0, y: 0)
         stain.zPosition = 1
+
 
         spreadClothes.addChild(stain)
         activeStains.append(stain)
@@ -260,6 +254,7 @@ class WashingScene: SKScene {
         if isValid {
             applySoap(selectedSoap, soapNode: soapNode)
         } else {
+            showHint(Loc.t(.WashingWrongSoap), on: hintLabel)
             soapNode.removeFromParent()
             draggedSoap = nil
             selectedSoapType = nil
