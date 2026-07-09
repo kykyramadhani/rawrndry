@@ -68,7 +68,7 @@ class FoldingScene: SKScene {
     }
 
     private var packageCenter: CGPoint { CGPoint(x: size.width * 0.5, y: size.height * 0.5) }
-    private var ropeStartPosition: CGPoint { CGPoint(x: size.width * 0.9, y: size.height * 0.22) }
+    private var ropeStartPosition: CGPoint { CGPoint(x: size.width * 0.85, y: size.height * 0.2) }
     private var basketPosition: CGPoint { CGPoint(x: size.width * 0.15, y: size.height * 0.2) }
 
     private var packageBounds: CGRect {

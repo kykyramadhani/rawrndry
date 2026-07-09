@@ -42,10 +42,17 @@ class CustomerScene: SKScene {
             return
         }
 
-        currentCustomer = CustomerManager.shared.getNextCustomer()
-        if currentCustomer == nil {
-            CustomerManager.shared.generateCustomers(forDay: GameState.shared.currentDay)
+        if let resumed = Self.resumingCustomer() {
+            // An order is already in progress for today (the player navigated back/forward
+            // via the station arrows before finishing it) — keep serving the same customer
+            // instead of popping a new one off the queue.
+            currentCustomer = resumed
+        } else {
             currentCustomer = CustomerManager.shared.getNextCustomer()
+            if currentCustomer == nil {
+                CustomerManager.shared.generateCustomers(forDay: GameState.shared.currentDay)
+                currentCustomer = CustomerManager.shared.getNextCustomer()
+            }
         }
 
         setupBackground()
@@ -60,6 +67,23 @@ class CustomerScene: SKScene {
 
         AudioManager.shared.stopRiverAmbience()
         AudioManager.shared.playThemeBGM()
+    }
+
+    /// Rebuilds the CustomerModel for an order already in progress today, from the data
+    /// Washing/Drying/Folding have been persisting into GameState all along — used instead
+    /// of `CustomerManager.getNextCustomer()`, which is destructive (pops the queue) and
+    /// must only run when actually starting a brand-new order.
+    private static func resumingCustomer() -> CustomerModel? {
+        let state = GameState.shared
+        guard state.orderGeneratedDay == state.currentDay, !state.currentOrderItems.isEmpty else { return nil }
+
+        return CustomerModel(
+            characterImage: state.currentCustomerImage,
+            itemsToWash: state.currentOrderItems,
+            requestedSoap: state.currentOrderItems.first?.requestedSoap ?? .rose,
+            reward: state.currentOrderReward,
+            customerIndexInDay: -1
+        )
     }
 
     /// Auto-opens the same help popup the "i" button shows, but only once ever — for the
