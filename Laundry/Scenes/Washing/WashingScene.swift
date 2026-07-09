@@ -69,21 +69,33 @@ class WashingScene: SKScene {
         currentItemIndex = GameState.shared.itemProgress.firstIndex(where: { !$0.isWashed }) ?? itemsToWash.count
 
         setupBackground()
+        
+        // STANDARD HUD
+//        addCurrencyHUD(
+//            topLeftOrigin: CGPoint(x: size.width * 0.05, y: size.height * 0.90),
+//            day: GameState.shared.currentDay,
+//            coins: GameState.shared.score
+//        )
+        addCurrencyHUD(topLeftOrigin: CGPoint(x: size.width * 0.05, y: size.height * 0.90), day: GameState.shared.currentDay, coins: GameState.shared.score)
+        
         setupLeftBasket()
         setupClothesOnSteps()
         setupSoaps()
         setupRightBasket()
         addStationArrows(current: .washing)
 
+        // STANDARD INSTRUCTION BUTTON
         helpButton = makeButton(
             imageNamed: AssetName.UI.btnInstruction,
-            position: CGPoint(x: self.size.width * 0.35, y: self.size.height * 0.40),
+            position: CGPoint(x: size.width * 0.85, y: size.height * 0.90),
             scale: 0.8,
             nodeName: "help"
         )
 
-        hintLabel = makeHintLabel(position: CGPoint(x: 0, y: -self.size.height * 0.42))
+        // STANDARD HINT LABEL
+        hintLabel = makeHintLabel(position: CGPoint(x: size.width / 2, y: size.height * 0.08))
 
+        // STANDARD SETTINGS BUTTON
         addSettingsButton()
 
         updateBasketPile()
@@ -302,11 +314,13 @@ class WashingScene: SKScene {
         let location = touch.location(in: self)
         let name = tappedNodeName(at: location)
 
+        // Settings & Popup Handlers
         if handleSettingsPopupTouchesBegan(at: location) { return }
         if handleTipPopupTap(at: location) { return }
         if handleStationArrowTap(nodeName: name, current: .washing) { return }
         if handleSettingsButtonTap(nodeName: name) { return }
 
+        // Help Button Handler
         if name == "help" {
             runButtonTapAnimation(on: helpButton) {
                 self.showTipPopup(text: Loc.t(.infoWashing))
@@ -368,6 +382,7 @@ class WashingScene: SKScene {
         guard let touch = touches.first else { return }
         let location = touch.location(in: self)
 
+        // Settings Popup Handler
         if handleSettingsPopupTouchesMoved(at: location) { return }
 
         switch currentState {
@@ -402,6 +417,7 @@ class WashingScene: SKScene {
     }
 
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        // Settings Popup Handler
         if handleSettingsPopupTouchesEnded() { return }
 
         AudioManager.shared.stopScrubbing()
