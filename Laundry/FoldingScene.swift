@@ -41,7 +41,7 @@ class FoldingScene: SKScene {
 
     private let minSwipeDistance: CGFloat = 60
     private let leafSize = CGSize(width: 300, height: 300)
-    private let ropeSize = CGSize(width: 90, height: 90)
+    private let ropeSize = CGSize(width: 130, height: 130)
     
     // 🔥 PENGATURAN JARAK TUMPUKAN (Hanya vertikal agar tumpukan lurus)
     private let stackVerticalOffset: CGFloat = 16.0
@@ -68,8 +68,8 @@ class FoldingScene: SKScene {
     }
 
     private var packageCenter: CGPoint { CGPoint(x: size.width * 0.5, y: size.height * 0.5) }
-    private var ropeStartPosition: CGPoint { CGPoint(x: size.width * 0.88, y: size.height * 0.3) }
-    private var basketPosition: CGPoint { CGPoint(x: size.width * 0.1, y: size.height * 0.2) }
+    private var ropeStartPosition: CGPoint { CGPoint(x: size.width * 0.9, y: size.height * 0.22) }
+    private var basketPosition: CGPoint { CGPoint(x: size.width * 0.15, y: size.height * 0.2) }
 
     private var packageBounds: CGRect {
         CGRect(
@@ -117,6 +117,7 @@ class FoldingScene: SKScene {
         hintLabel = makeHintLabel(position: CGPoint(x: size.width / 2, y: size.height * 0.08))
 
         addSettingsButton()
+        addHomeButton()
 
         refreshState()
         showHint(initialHintText, on: hintLabel)
@@ -133,7 +134,7 @@ class FoldingScene: SKScene {
 
     private func addBasket() {
         basket = SKSpriteNode(imageNamed: "packagingBasketEmpty")
-        basket.size = CGSize(width: 90, height: 70)
+        basket.size = CGSize(width: 120, height: 120)
         basket.position = basketPosition
         basket.zPosition = 6
         addChild(basket)
@@ -207,15 +208,18 @@ class FoldingScene: SKScene {
         clothesDragIcon.texture = SKTexture(imageNamed: "packagingFoldedClothes\(variant)")
     }
 
-    /// Basket art shows exactly how many items are left to fold (packagingBasket1...4),
-    /// down to packagingBasketEmpty once the last one's been dragged out.
+    /// Basket art shows the pattern of whichever item is next up to fold (packagingBasket1...4
+    /// each depict the same pattern as the matching packagingFoldedClothes1...4), down to
+    /// packagingBasketEmpty once every item's been dragged out. Must stay keyed off the same
+    /// nextUnfoldedIndex as refreshClothesDragIcon(), otherwise the basket shows a different
+    /// pattern than the item you actually drag out of it.
     private func updateBasketTexture() {
-        let remaining = GameState.shared.itemProgress.filter { !$0.isFolded }.count
-        guard isFoldingReady, remaining > 0 else {
+        guard isFoldingReady, let index = nextUnfoldedIndex else {
             basket.texture = SKTexture(imageNamed: "packagingBasketEmpty")
             return
         }
-        basket.texture = SKTexture(imageNamed: "packagingBasket\(min(remaining, 4))")
+        let variant = GameState.shared.itemProgress[index].dryingVariant
+        basket.texture = SKTexture(imageNamed: "packagingBasket\(variant)")
     }
 
     private func addLeafLayers() {
@@ -340,9 +344,11 @@ class FoldingScene: SKScene {
 
         if handleSettingsPopupTouchesBegan(at: location) { return }
         if handleTipPopupTap(at: location) { return }
+        if handleHomeConfirmPopupTap(at: location) { return }
 
         if handleStationArrowTap(nodeName: name, current: .folding) { return }
         if handleSettingsButtonTap(nodeName: name) { return }
+        if handleHomeButtonTap(nodeName: name) { return }
 
         if name == "help" {
             runButtonTapAnimation(on: helpButton) {

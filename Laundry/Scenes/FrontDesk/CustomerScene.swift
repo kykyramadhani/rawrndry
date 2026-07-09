@@ -23,7 +23,7 @@ class CustomerScene: SKScene {
     private var currentCustomer: CustomerModel?
     
     private let finalCustomerPosition = CGPoint(x: -0.28, y: -0.22)
-    private let finalBagPosition = CGPoint(x: 0.32, y: -0.18)
+    private let finalBagPosition = CGPoint(x: 0.24, y: -0.18)
     
     private let plainTextColor = UIColor(red: 255.0/255.0, green: 247.0/255.0, blue: 234.0/255.0, alpha: 1.0)
     private let plainTextBrown = UIColor(red: 143.0/255.0, green: 43.0/255.0, blue: 18.0/255.0, alpha: 1.0)
@@ -102,6 +102,7 @@ class CustomerScene: SKScene {
         chevronBtn = addStationArrows(current: .customer, showLeft: false).right!
 
         addSettingsButton()
+        addHomeButton()
     }
     
     private func setupCustomer() {
@@ -236,7 +237,9 @@ class CustomerScene: SKScene {
 
         if handleSettingsPopupTouchesBegan(at: location) { return }
         if handleTipPopupTap(at: location) { return }
+        if handleHomeConfirmPopupTap(at: location) { return }
         if handleSettingsButtonTap(nodeName: tappedNodeName(at: location)) { return }
+        if handleHomeButtonTap(nodeName: tappedNodeName(at: location)) { return }
 
         if chevronBtn.contains(location) {
             self.isUserInteractionEnabled = false

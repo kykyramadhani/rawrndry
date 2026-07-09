@@ -90,8 +90,8 @@ class DryingScene: SKScene {
     private var shakeCamera: SKCameraNode!
 
     private var ropeY: CGFloat { size.height * 0.78 }
-    private var basketPosition: CGPoint { CGPoint(x: size.width * 0.15, y: size.height * 0.24) }
-    private var dryBasketPosition: CGPoint { CGPoint(x: size.width * 0.85, y: size.height * 0.24) }
+    private var basketPosition: CGPoint { CGPoint(x: size.width * 0.15, y: size.height * 0.19) }
+    private var dryBasketPosition: CGPoint { CGPoint(x: size.width * 0.85, y: size.height * 0.19) }
     private var rackZone: CGRect { CGRect(x: size.width * 0.15, y: ropeY - 60, width: size.width * 0.7, height: 90) }
     private var basketZone: CGRect { CGRect(x: basketPosition.x - 60, y: basketPosition.y - 50, width: 120, height: 110) }
     private var dryBasketZone: CGRect { CGRect(x: dryBasketPosition.x - 60, y: dryBasketPosition.y - 50, width: 120, height: 110) }
@@ -126,6 +126,7 @@ class DryingScene: SKScene {
         hintLabel = makeHintLabel(position: CGPoint(x: size.width / 2, y: size.height * 0.08))
 
         addSettingsButton()
+        addHomeButton()
 
         setupDryingInput()
     }
@@ -693,9 +694,11 @@ class DryingScene: SKScene {
 
         if handleSettingsPopupTouchesBegan(at: location) { return }
         if handleTipPopupTap(at: location) { return }
+        if handleHomeConfirmPopupTap(at: location) { return }
 
         if handleStationArrowTap(nodeName: name, current: .drying) { return }
         if handleSettingsButtonTap(nodeName: name, onClose: { [weak self] in self?.refreshDryingInputMode() }) { return }
+        if handleHomeButtonTap(nodeName: name) { return }
 
         if name == "help" {
             runButtonTapAnimation(on: helpButton) {

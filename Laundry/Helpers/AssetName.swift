@@ -18,6 +18,7 @@ enum AssetName {
         static let sunIcon = "sun"
         static let gemIcon = "gemCurrency"
         static let btnInstruction = "btnInstruction"
+        static let btnHome = "btn-home"
         static let popUpFrame = "popUpFrame"
         static let btnClose = "btnClose"
         static let iconStarOn = "icon-star-on"

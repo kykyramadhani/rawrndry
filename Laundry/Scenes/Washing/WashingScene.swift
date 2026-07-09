@@ -101,6 +101,9 @@ class WashingScene: SKScene {
         // STANDARD SETTINGS BUTTON
         addSettingsButton()
 
+        // STANDARD HOME BUTTON
+        addHomeButton()
+
         updateBasketPile()
         restoreCleanBasketIfNeeded()
 
@@ -315,8 +318,10 @@ class WashingScene: SKScene {
         // Settings & Popup Handlers
         if handleSettingsPopupTouchesBegan(at: location) { return }
         if handleTipPopupTap(at: location) { return }
+        if handleHomeConfirmPopupTap(at: location) { return }
         if handleStationArrowTap(nodeName: name, current: .washing) { return }
         if handleSettingsButtonTap(nodeName: name) { return }
+        if handleHomeButtonTap(nodeName: name) { return }
 
         // Help Button Handler
         if name == "help" {

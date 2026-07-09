@@ -80,6 +80,7 @@ class HandoffScene: SKScene {
         // No chevrons here — handing off the package is the only action on this screen.
 
         addSettingsButton()
+        addHomeButton()
     }
 
     private func setupCustomer() {
@@ -181,7 +182,9 @@ class HandoffScene: SKScene {
         if handleSettingsPopupTouchesBegan(at: location) { return }
         if handleTipPopupTap(at: location) { return }
         if handleRewardPopupTap(at: location) { return }
+        if handleHomeConfirmPopupTap(at: location) { return }
         if handleSettingsButtonTap(nodeName: tappedNodeName(at: location)) { return }
+        if handleHomeButtonTap(nodeName: tappedNodeName(at: location)) { return }
 
         if instructionBtn.contains(location) {
             runButtonTapAnimation(on: instructionBtn) {
@@ -252,9 +255,23 @@ class HandoffScene: SKScene {
         run(.sequence([
             .wait(forDuration: 1.0),
             .run { [weak self] in
-                self?.showRewardPopup()
+                guard let self else { return }
+                // The reward popup is the end-of-day summary, so only the day's last
+                // customer should trigger it — earlier handoffs move straight to the next
+                // customer.
+                if CustomerManager.shared.remainingCustomersForToday.isEmpty {
+                    self.showRewardPopup()
+                } else {
+                    self.goToNextCustomer()
+                }
             }
         ]))
+    }
+
+    private func goToNextCustomer() {
+        GameState.shared.score += GameState.shared.coinsEarned
+        GameState.shared.coinsEarned = 0
+        goTo(CustomerScene(size: size))
     }
 
     private func calculateCoins() {
@@ -350,15 +367,12 @@ class HandoffScene: SKScene {
                 GameState.shared.score += GameState.shared.coinsEarned
                 GameState.shared.coinsEarned = 0
 
-                if CustomerManager.shared.remainingCustomersForToday.isEmpty {
-                    // That was the last customer of the day — advance the day counter and
-                    // bounce back to StartScene, which continues into the next day (or shows
-                    // the "more levels coming soon" state once the design table runs out).
-                    GameState.shared.currentDay += 1
-                    self.goTo(StartScene(size: self.size))
-                } else {
-                    self.goTo(CustomerScene(size: self.size))
-                }
+                // The reward popup only shows for the day's last customer (see
+                // completeHandoff), so tapping OK here always advances to the next day —
+                // StartScene continues into it (or shows "more levels coming soon" once the
+                // design table runs out).
+                GameState.shared.currentDay += 1
+                self.goTo(StartScene(size: self.size))
             }
         }
         return true

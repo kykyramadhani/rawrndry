@@ -153,6 +153,19 @@ final class GameState {
         if let reward { currentOrderReward = reward }
     }
 
+    /// Wipes the current day's in-progress order and re-queues its customers from the start —
+    /// used by the home-button "are you sure you want to go back?" confirm. Leaves `currentDay`
+    /// and any already-banked `score` untouched, since only *this* day is starting over.
+    func restartCurrentDay() {
+        tornItemsCount = 0
+        itemProgress = []
+        currentOrderItems = []
+        isPackaged = false
+        orderGeneratedDay = 0
+        coinsEarned = 0
+        CustomerManager.shared.generateCustomers(forDay: currentDay)
+    }
+
     func resetAll() {
         currentDay = 1
         score = 0
