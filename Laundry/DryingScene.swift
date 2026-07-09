@@ -9,6 +9,7 @@
 
 import SpriteKit
 import AVFoundation
+import SoundAnalysis
 
 class DryingScene: SKScene {
 
@@ -36,10 +37,34 @@ class DryingScene: SKScene {
     private var blowBarFill: SKShapeNode!
     private var blowPercentLabel: SKLabelNode!
 
+    // MARK: - Audio & Sound Analysis Properties
     private let micEngine = AVAudioEngine()
     private var micPermissionGranted = false
     private var micEngineStarted = false
+    
+    // 🔥 PENGATURAN MODE CLASSIFIER (Set ke true untuk menguji SoundAnalysis)
+    private var enableClassifierValidation = false
+    
+    // SNClassifier Properties
+    private var streamAnalyzer: SNAudioStreamAnalyzer?
+    private let resultsObserver = BlowResultsObserver()
+    private let analysisQueue = DispatchQueue(label: "com.laundry.soundAnalysisQueue")
+    private var audioFramePosition: AVAudioFramePosition = 0
+    
+    // Detection State
+    private var detectedSoundLabel: String?
+    private var detectedConfidence: Double = 0
+    private var isBlowingSound = false
+    private let confidenceThreshold: Double = 0.80
+
     private var isBlowing = false
+    private var isOverblowing = false
+    private let blowThreshold: Float = -20
+    private let overblowThreshold: Float = -6
+
+    // Logging Throttlers
+    private var bufferLogCounter = 0
+    private var lastClassifierLogTime: TimeInterval = 0
 
     /// The leaf tool shown instead of the mic UI when Settings has the microphone turned off —
     /// swipe it across the rope to dry clothes instead of blowing.
@@ -52,10 +77,6 @@ class DryingScene: SKScene {
     /// Decorative rope-and-leaf-bundle prop shown next to the leaf tool — hides while the
     /// player is actively fanning, and never shows at all in microphone mode.
     private var leafRopeNode: SKSpriteNode?
-
-    private var isOverblowing = false
-    private let blowThreshold: Float = -20
-    private let overblowThreshold: Float = -6
 
     private let itemSize = CGSize(width: 70, height: 90)
     private let blowBarWidth: CGFloat = 200
@@ -303,7 +324,7 @@ class DryingScene: SKScene {
         addChild(bg)
 
         let fill = SKShapeNode()
-        fill.fillColor = sliderFillColor
+        fill.fillColor = .orange
         fill.strokeColor = .clear
         fill.zPosition = 11
         bg.addChild(fill)
@@ -342,7 +363,7 @@ class DryingScene: SKScene {
         addChild(statusLabel)
     }
 
-    // MARK: - Microphone
+    // MARK: - Microphone & Sound Classifier
 
     private func requestMicPermissionAndStart() {
         AVCaptureDevice.requestAccess(for: .audio) { [weak self] granted in
@@ -364,12 +385,18 @@ class DryingScene: SKScene {
             try session.setCategory(.record, mode: .measurement)
             try session.setActive(true)
         } catch {
+            print("❌ [Mic] Engine Setup Failed: \(error)")
             showHint(Loc.t(.dryingHintMicStartFailed), on: hintLabel)
             return
         }
 
         let inputNode = micEngine.inputNode
         let format = inputNode.outputFormat(forBus: 0)
+
+        // Setup Classifier only if enabled
+        if enableClassifierValidation {
+            setupSoundClassifier(format: format)
+        }
 
         inputNode.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
             self?.processAudioBuffer(buffer)
@@ -378,7 +405,9 @@ class DryingScene: SKScene {
         do {
             try micEngine.start()
             micEngineStarted = true
+            print("🎙️ [Mic] Engine Started Successfully")
         } catch {
+            print("❌ [Mic] Engine Start Failed: \(error)")
             showHint(Loc.t(.dryingHintMicStartFailed), on: hintLabel)
         }
     }
@@ -388,14 +417,47 @@ class DryingScene: SKScene {
         micEngine.stop()
         try? AVAudioSession.sharedInstance().setActive(false)
         micEngineStarted = false
+        
+        // Teardown Classifier
+        streamAnalyzer?.removeAllRequests()
+        streamAnalyzer = nil
+        audioFramePosition = 0
+    }
+    
+    private func setupSoundClassifier(format: AVAudioFormat) {
+        streamAnalyzer = SNAudioStreamAnalyzer(format: format)
+        
+        resultsObserver.onResult = { [weak self] identifier, confidence, logString in
+            self?.handleClassification(identifier: identifier, confidence: confidence, logString: logString)
+        }
+        
+        do {
+            // Note: If built-in model lacks "blowing/wind", you MUST train a custom .mlmodel
+            // via Create ML and load it here using SNClassifySoundRequest(mlModel: customModel)
+            let request = try SNClassifySoundRequest(classifierIdentifier: .version1)
+            try streamAnalyzer?.add(request, withObserver: resultsObserver)
+            print("🧠 [Analyzer] Classifier Request Added")
+        } catch {
+            print("❌ [Analyzer] Failed to setup SoundAnalysis: \(error.localizedDescription)")
+        }
     }
 
     /// Runs on the audio engine's internal thread — keep this cheap and hop to main before touching game state.
     private func processAudioBuffer(_ buffer: AVAudioPCMBuffer) {
+        bufferLogCounter += 1
+        // Log every ~20th buffer to avoid console freeze
+        let shouldLog = (bufferLogCounter % 20 == 0)
+
+        if shouldLog {
+            print("--------------------------------------------------")
+            print("🎙️ [Mic] Audio Buffer Received")
+        }
+
         guard let channelData = buffer.floatChannelData?[0] else { return }
         let frameLength = Int(buffer.frameLength)
         guard frameLength > 0 else { return }
 
+        // 1. DUAL PIPELINE - PART A: CALCULATE RMS (ALWAYS RUNS)
         var sumOfSquares: Float = 0
         for i in 0..<frameLength {
             let sample = channelData[i]
@@ -403,22 +465,98 @@ class DryingScene: SKScene {
         }
         let rms = sqrt(sumOfSquares / Float(frameLength))
         let avgPower = 20 * log10(max(rms, 0.000001))
+        
+        if shouldLog {
+            print("📊 [RMS] Power = \(String(format: "%.1f", avgPower)) dB")
+        }
+        
+        // 2. DUAL PIPELINE - PART B: SEND TO CLASSIFIER (IF ENABLED)
+        if enableClassifierValidation, let analyzer = self.streamAnalyzer {
+            if shouldLog { print("🧠 [Analyzer] Analyzer Processing Buffer...") }
+            
+            analysisQueue.async { [weak self] in
+                guard let self = self else { return }
+                do {
+                    try analyzer.analyze(buffer, atAudioFramePosition: self.audioFramePosition)
+                    self.audioFramePosition += AVAudioFramePosition(frameLength)
+                } catch {
+                    if shouldLog { print("❌ [Analyzer] Analysis Error: \(error)") }
+                }
+            }
+        }
 
+        // 3. MERGE PIPELINE - HANDLE POWER ON MAIN THREAD
         DispatchQueue.main.async { [weak self] in
-            self?.handleMicPower(avgPower)
+            self?.handleMicPower(avgPower, shouldLog: shouldLog)
         }
     }
+    
+    private func handleClassification(identifier: String, confidence: Double, logString: String) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.detectedSoundLabel = identifier
+            self.detectedConfidence = confidence
+            self.isBlowingSound = self.isValidBlowingSound(identifier: identifier, confidence: confidence)
+            
+            // Throttle Classifier Top Predictions Log (Print once per second)
+            let currentTime = CACurrentMediaTime()
+            if currentTime - self.lastClassifierLogTime > 1.0 {
+                print(logString)
+                self.lastClassifierLogTime = currentTime
+            }
+        }
+    }
+    
+    private func isValidBlowingSound(identifier: String, confidence: Double) -> Bool {
+        let lowercased = identifier.lowercased()
+        return lowercased.contains("wind") ||
+               lowercased.contains("breath") ||
+               lowercased.contains("blow")
+    }
 
-    private func handleMicPower(_ power: Float) {
+    private func handleMicPower(_ power: Float, shouldLog: Bool) {
+        var isAccepted = true
+        var rejectReason = ""
+
+        // 1. Classifier Validation & Graceful Fallback
+        if enableClassifierValidation {
+            if detectedConfidence < confidenceThreshold {
+                // FALLBACK: Model belum yakin / gagal, kita izinkan RMS jalan (Sistem Lama)
+                if shouldLog { print("⚠️ [Fallback] Classifier confidence too low (\(String(format: "%.2f", detectedConfidence))). Using RMS.") }
+            } else if !isBlowingSound {
+                // REJECT: Classifier yakin ini BUKAN suara tiupan
+                isAccepted = false
+                rejectReason = "Classifier rejected label: \(detectedSoundLabel ?? "Unknown")"
+            }
+        }
+
+        // Output Status
+        if shouldLog {
+            if !isAccepted {
+                print("❌ [Rejected] \(rejectReason) | Power: \(String(format: "%.1f", power)) dB")
+            } else if enableClassifierValidation && detectedConfidence >= confidenceThreshold {
+                print("✅ [Accepted] Prediction: \(detectedSoundLabel ?? "Unknown") (\(String(format: "%.2f", detectedConfidence))) | Power: \(String(format: "%.1f", power)) dB")
+            }
+        }
+
+        if !isAccepted {
+            isBlowing = false
+            isOverblowing = false
+            return
+        }
+
+        // 2. RMS Power Execution (Existing Logic)
         if power > overblowThreshold {
             isBlowing = false
             if !isOverblowing {
+                if shouldLog { print("💨 [Action] OVERBLOW TRIGGERED -> dropOverblownItems()") }
                 isOverblowing = true
                 dropOverblownItems()
             }
         } else if power > blowThreshold {
             isOverblowing = false
             if !isBlowing {
+                if shouldLog { print("🌬️ [Action] BLOW DETECTED -> advanceDrying()") }
                 isBlowing = true
                 advanceDrying()
             }
@@ -432,13 +570,15 @@ class DryingScene: SKScene {
 
     private func advanceDrying() {
         let dryingIndices = GameState.shared.itemProgress.indices.filter {
-            GameState.shared.itemProgress[$0].isHungToDry && GameState.shared.itemProgress[$0].dryProgress < 1 && itemNodes[$0] != nil
+            GameState.shared.itemProgress[$0].isHungToDry && GameState.shared.itemProgress[$0].dryProgress < 1
         }
         guard !dryingIndices.isEmpty else { return }
 
         for index in dryingIndices {
             let progress = min(1, GameState.shared.itemProgress[index].dryProgress + 0.12)
             GameState.shared.itemProgress[index].dryProgress = progress
+            
+            // Menggunakan colorBlendFactor sesuai existing logic
             itemNodes[index]?.colorBlendFactor = 1 - progress
         }
 
@@ -474,55 +614,37 @@ class DryingScene: SKScene {
     /// distinct from the gentle sway a normal-strength blow triggers.
     private func dropOverblownItems() {
         let fallingIndices = GameState.shared.itemProgress.indices.filter {
-            GameState.shared.itemProgress[$0].isHungToDry && GameState.shared.itemProgress[$0].dryProgress < 1 && itemNodes[$0] != nil
+            GameState.shared.itemProgress[$0].isHungToDry && GameState.shared.itemProgress[$0].dryProgress < 1
         }
         guard !fallingIndices.isEmpty else { return }
 
         showStatus("Too hard! It fell!")
         run(.sequence([.wait(forDuration: 1.0), .run { [weak self] in self?.hideStatus() }]))
+        
+        // Memicu goyangan layar (camera shake)
         shakeScreen()
-        HapticsManager.shared.playOverblowImpact()
 
         for index in fallingIndices {
             guard let node = itemNodes[index] else { continue }
             let variant = GameState.shared.itemProgress[index].dryingVariant
-            let groundPosition = CGPoint(x: node.position.x, y: node.position.y - 60)
+            node.texture = SKTexture(imageNamed: "dryingClothesFallen\(variant)")
+            node.zPosition = 4
 
-            node.run(.sequence([
-                .group([
-                    .moveBy(x: 0, y: -60, duration: 0.35),
-                    .rotate(byAngle: .pi / 6, duration: 0.35)
-                ]),
-                .removeFromParent()
-            ]))
+            let drop = SKAction.group([
+                .moveBy(x: 0, y: -60, duration: 0.35),
+                .fadeOut(withDuration: 0.35),
+                .rotate(byAngle: .pi / 6, duration: 0.35)
+            ])
+            node.run(.sequence([drop, .removeFromParent()]))
             itemNodes[index] = nil
             freeSlot(for: index)
 
-            // Leave a fallen-clothes sprite lying on the ground as a visible penalty beat,
-            // then sweep the item back into the wet basket 2 seconds later — not instantly.
-            // isHungToDry/dryProgress stay untouched until then, and the `itemNodes[$0] !=
-            // nil` filters above keep this index out of advanceDrying/another overblow in
-            // the meantime, so it can't be double-processed while it's "on the ground."
-            let groundEffect = SKSpriteNode(imageNamed: "dryingClothesFallen\(variant)")
-            groundEffect.size = itemSize
-            groundEffect.position = groundPosition
-            groundEffect.zRotation = .pi / 6
-            groundEffect.zPosition = 4
-            addChild(groundEffect)
-
-            groundEffect.run(.sequence([
-                .wait(forDuration: 2.0),
-                .fadeOut(withDuration: 0.3),
-                .removeFromParent(),
-                .run { [weak self] in
-                    guard let self else { return }
-                    GameState.shared.itemProgress[index].isHungToDry = false
-                    GameState.shared.itemProgress[index].dryProgress = 0
-                    self.updateBasketPilesVisibility()
-                    self.updateBlowBar()
-                }
-            ]))
+            GameState.shared.itemProgress[index].isHungToDry = false
+            GameState.shared.itemProgress[index].dryProgress = 0
         }
+
+        updateBasketPilesVisibility()
+        updateBlowBar()
     }
 
     /// Jolts the camera through a quick decaying zigzag — since the camera defines the
@@ -710,5 +832,31 @@ class DryingScene: SKScene {
 
         updateBasketPilesVisibility()
         updateBlowBar()
+    }
+}
+
+// MARK: - Observer For Sound Analysis
+private class BlowResultsObserver: NSObject, SNResultsObserving {
+    var onResult: ((String, Double, String) -> Void)?
+
+    func request(_ request: SNRequest, didProduce result: SNResult) {
+        guard let classificationResult = result as? SNClassificationResult else { return }
+        
+        let topClassifications = Array(classificationResult.classifications.prefix(3))
+        var logString = "🤖 [Classifier] Top Predictions:\n"
+        for c in topClassifications {
+            logString += "   - \(c.identifier) (\(String(format: "%.2f", c.confidence)))\n"
+        }
+        
+        guard let top = topClassifications.first else { return }
+        onResult?(top.identifier, top.confidence, logString)
+    }
+
+    func request(_ request: SNRequest, didFailWithError error: Error) {
+        print("❌ [Analyzer] SoundAnalysis Error: \(error.localizedDescription)")
+    }
+
+    func requestDidComplete(_ request: SNRequest) {
+        // Observer completion hook
     }
 }

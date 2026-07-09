@@ -28,9 +28,11 @@ class FoldingScene: SKScene {
 
     private var leafBack: SKSpriteNode!
     private var leafFront: SKSpriteNode!
-    private var placedClothesSprites: [SKSpriteNode] = []
+    private var clothesPile: SKNode! // Container untuk tumpukan pakaian
+    private var clothesShadow: SKSpriteNode!
     private var clothesDragIcon: SKSpriteNode!
     private var rope: SKSpriteNode!
+    private var knottedRope: SKSpriteNode!
     private var basket: SKSpriteNode!
     private var arrows: [FoldArrow: SKSpriteNode] = [:]
 
@@ -40,6 +42,30 @@ class FoldingScene: SKScene {
     private let minSwipeDistance: CGFloat = 60
     private let leafSize = CGSize(width: 300, height: 300)
     private let ropeSize = CGSize(width: 90, height: 90)
+    
+    // 🔥 PENGATURAN JARAK TUMPUKAN (Hanya vertikal agar tumpukan lurus)
+    private let stackVerticalOffset: CGFloat = 16.0
+    
+    // 🔥 PENGATURAN UKURAN PAKAIAN ADAPTIF
+    private var foldedClothesSize: CGSize {
+        // Ambil jumlah pakaian yang selesai dikeringkan
+        let driedCount = GameState.shared.itemProgress.filter { $0.isDried }.count
+        let scale: CGFloat
+        
+        // Sesuaikan skala berdasarkan jumlah pakaian agar selalu muat di dalam daun
+        switch driedCount {
+        case 0, 1:
+            scale = 0.58 // Ukuran normal
+        case 2:
+            scale = 0.50 // Sedikit lebih kecil
+        case 3:
+            scale = 0.42 // Lebih kecil lagi
+        default:
+            scale = 0.35 // Otomatis diperkecil maksimal untuk >3 pakaian
+        }
+        
+        return CGSize(width: leafSize.width * scale, height: leafSize.height * scale)
+    }
 
     private var packageCenter: CGPoint { CGPoint(x: size.width * 0.5, y: size.height * 0.5) }
     private var ropeStartPosition: CGPoint { CGPoint(x: size.width * 0.88, y: size.height * 0.3) }
@@ -52,6 +78,12 @@ class FoldingScene: SKScene {
             width: leafSize.width,
             height: leafSize.height
         )
+    }
+    
+    // DATA DARI QUEUE
+    /// Mengambil pattern pakaian yang berada PALING ATAS pada tumpukan (terakhir masuk antrean selesai).
+    private var topPatternID: Int {
+        return GameState.shared.itemProgress.filter { $0.isDried }.last?.dryingVariant ?? 1
     }
 
     /// Index of the next basket item still waiting to be dragged into the package, in
@@ -73,6 +105,7 @@ class FoldingScene: SKScene {
         addLeafLayers()
         addArrows()
         addRope()
+        addKnottedRope()
 
         helpButton = makeButton(
             imageNamed: AssetName.UI.btnInstruction,
@@ -89,8 +122,6 @@ class FoldingScene: SKScene {
         showHint(initialHintText, on: hintLabel)
     }
 
-    /// Whether the clothes have actually reached the basket this scene pulls from — see
-    /// `GameState.isReadyForFolding`. While false, the basket stays empty and un-draggable.
     private var isFoldingReady: Bool { GameState.shared.isReadyForFolding }
 
     private var initialHintText: String {
@@ -104,7 +135,7 @@ class FoldingScene: SKScene {
         basket = SKSpriteNode(imageNamed: "packagingBasketEmpty")
         basket.size = CGSize(width: 90, height: 70)
         basket.position = basketPosition
-        basket.zPosition = 5
+        basket.zPosition = 6
         addChild(basket)
         updateBasketTexture()
     }
@@ -115,19 +146,45 @@ class FoldingScene: SKScene {
     /// Sized to sit inside the wrap's actual cutout window, not the full leaf art's bounds —
     /// at leafSize's own scale it spilled out past the folded flaps into the background.
     private func addClothesLayer() {
+        clothesShadow = SKSpriteNode(imageNamed: "benchmarkFoldedClothesPiled")
+        clothesShadow.size = foldedClothesSize
+        clothesShadow.position = packageCenter
+        clothesShadow.zPosition = 1.0
+        clothesShadow.isHidden = true
+        addChild(clothesShadow)
+
+        // Container the placed items stack into, one on top of the last.
+        clothesPile = SKNode()
+        clothesPile.name = "clothesPile"
+        clothesPile.position = packageCenter
+        clothesPile.zPosition = 2.0 // below leafFront (3.0)
+        clothesPile.isHidden = true
+        addChild(clothesPile)
+
         for index in GameState.shared.itemProgress.indices where GameState.shared.itemProgress[index].isFolded {
             addPlacedClothesSprite(for: index)
         }
     }
 
+    /// Vertical slot for the nth item in the stack, centered across every dried item so the
+    /// pile doesn't drift up/down as items are added one at a time.
+    private func stackSlotPosition(for slot: Int) -> CGPoint {
+        let count = CGFloat(GameState.shared.itemProgress.filter { $0.isDried }.count)
+        let startY = -((count - 1) * stackVerticalOffset) / 2
+        return CGPoint(x: 0, y: startY + CGFloat(slot) * stackVerticalOffset)
+    }
+
     private func addPlacedClothesSprite(for index: Int) {
         let variant = GameState.shared.itemProgress[index].dryingVariant
         let sprite = SKSpriteNode(imageNamed: "packagingFoldedClothes\(variant)")
-        sprite.size = CGSize(width: leafSize.width * 0.60, height: leafSize.height * 0.60)
-        sprite.position = packageCenter
-        sprite.zPosition = 1.1 + CGFloat(index) * 0.01
-        addChild(sprite)
-        placedClothesSprites.append(sprite)
+        sprite.size = foldedClothesSize
+        let slot = clothesPile.children.count
+        sprite.position = stackSlotPosition(for: slot)
+        sprite.zPosition = CGFloat(slot) * 0.1
+        clothesPile.addChild(sprite)
+
+        clothesShadow.isHidden = false
+        clothesPile.isHidden = false
     }
 
     /// The next basket item lifted out and dragged into the package. Hidden except while
@@ -136,9 +193,9 @@ class FoldingScene: SKScene {
     private func addClothesDragIcon() {
         clothesDragIcon = SKSpriteNode()
         clothesDragIcon.name = "clothesDragIcon"
-        clothesDragIcon.size = CGSize(width: 100, height: 100)
+        clothesDragIcon.size = foldedClothesSize
         clothesDragIcon.position = basketPosition
-        clothesDragIcon.zPosition = 6
+        clothesDragIcon.zPosition = 7 // Harus paling atas saat di-drag
         clothesDragIcon.isHidden = true
         addChild(clothesDragIcon)
         refreshClothesDragIcon()
@@ -166,14 +223,14 @@ class FoldingScene: SKScene {
         leafBack.name = "leafBack"
         leafBack.size = leafSize
         leafBack.position = packageCenter
-        leafBack.zPosition = 0
+        leafBack.zPosition = 0 // Paling bawah
         addChild(leafBack)
 
         leafFront = SKSpriteNode(imageNamed: "packagingState2Front")
         leafFront.name = "leafFront"
         leafFront.size = leafSize
         leafFront.position = packageCenter
-        leafFront.zPosition = 2
+        leafFront.zPosition = 3 // Di atas pakaian (2.0) tapi di bawah arrow/tali
         leafFront.isHidden = true
         addChild(leafFront)
     }
@@ -199,15 +256,22 @@ class FoldingScene: SKScene {
         }
     }
 
-    /// Visible and draggable from the start — dropping it early just snaps back with no
-    /// effect (see resolveRopeDrop) rather than being blocked outright.
     private func addRope() {
         rope = SKSpriteNode(imageNamed: "packagingRope")
         rope.name = "rope"
         rope.size = ropeSize
         rope.position = ropeStartPosition
-        rope.zPosition = 3
+        rope.zPosition = 5
         addChild(rope)
+    }
+
+    private func addKnottedRope() {
+        knottedRope = SKSpriteNode(imageNamed: "packagingKnottedRope")
+        knottedRope.size = ropeSize
+        knottedRope.position = packageCenter
+        knottedRope.zPosition = 5
+        knottedRope.isHidden = true
+        addChild(knottedRope)
     }
 
     // MARK: - State machine
@@ -287,7 +351,7 @@ class FoldingScene: SKScene {
             return
         }
 
-        if isFoldingReady, !clothesPlaced, clothesDragIcon.frame.insetBy(dx: -10, dy: -10).contains(location) {
+        if isFoldingReady, !clothesPlaced, clothesDragIcon.frame.insetBy(dx: -10, dy: -10).contains(location) || basket.contains(location) {
             isDraggingClothes = true
             clothesDragIcon.isHidden = false
             clothesDragOffset = CGPoint(x: clothesDragIcon.position.x - location.x, y: clothesDragIcon.position.y - location.y)
@@ -427,8 +491,6 @@ class FoldingScene: SKScene {
     // MARK: - Rope drag
 
     private func resolveRopeDrop() {
-        // The package isn't actually ready to be tied yet — let the player drag the rope
-        // around freely, but dropping it anywhere just snaps it back with no side effects.
         guard currentState == 5 else {
             rope.run(.move(to: ropeStartPosition, duration: 0.3))
             rope.texture = SKTexture(imageNamed: "packagingRope")
@@ -451,7 +513,12 @@ class FoldingScene: SKScene {
         leafFront.texture = SKTexture(imageNamed: "packagingState6Front")
 
         // Sealed now — no reason to still show the folded clothes underneath the closed wrap.
-        placedClothesSprites.forEach { $0.isHidden = true }
+        clothesPile.isHidden = true
+        clothesShadow.isHidden = true
+
+        knottedRope.isHidden = false
+        knottedRope.setScale(0.5)
+        knottedRope.run(.scale(to: 1.0, duration: 0.25))
 
         showHint(Loc.t(.foldingHintPackaged), on: hintLabel)
 

@@ -148,8 +148,10 @@
 				DEVELOPMENT_TEAM = NTPW7765ND;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Laundry/Info.plist;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Laundry Day uses the microphone so you can blow on clothes to dry them.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UIStatusBarHidden = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -180,8 +182,10 @@
 				DEVELOPMENT_TEAM = NTPW7765ND;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Laundry/Info.plist;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Laundry Day uses the microphone so you can blow on clothes to dry them.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UIStatusBarHidden = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
