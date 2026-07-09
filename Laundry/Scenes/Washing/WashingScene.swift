@@ -75,6 +75,8 @@ class WashingScene: SKScene {
         setupRightBasket()
         addStationArrows(current: .washing)
 
+        addCurrencyHUD(topLeftOrigin: CGPoint(x: -self.size.width * 0.45, y: self.size.height * 0.40), day: GameState.shared.currentDay, coins: GameState.shared.score)
+
         helpButton = makeButton(
             imageNamed: AssetName.UI.btnInstruction,
             position: CGPoint(x: self.size.width * 0.35, y: self.size.height * 0.40),

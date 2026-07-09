@@ -64,7 +64,7 @@ class DryingScene: SKScene {
     /// Tints the actual clothing texture light blue while wet instead of laying a plain
     /// rectangular color block on top — colorBlendFactor only tints the art's own opaque
     /// pixels, so the wet look follows the garment's real silhouette (no visible box edges).
-    private let wetTintColor = UIColor(red: 0.55, green: 0.78, blue: 0.95, alpha: 1.0)
+    private let wetTintColor = UIColor(red: 0.73, green: 0.64, blue: 0.58, alpha: 1)
 
     private var shakeCamera: SKCameraNode!
 
@@ -150,7 +150,7 @@ class DryingScene: SKScene {
     private func addLeafTool() {
         let leaf = SKSpriteNode(imageNamed: "dryingLeafFan")
         leaf.name = "leafTool"
-        leaf.size = CGSize(width: 74, height: 60)
+        leaf.size = CGSize(width: 120, height: 100)
         leaf.position = CGPoint(x: size.width * 0.5, y: ropeY - 70)
         leaf.zPosition = 40
         leaf.isHidden = true
@@ -162,8 +162,8 @@ class DryingScene: SKScene {
     /// compete with either.
     private func addLeafRopeProp() {
         let prop = SKSpriteNode(imageNamed: "dryingLeafRope")
-        prop.size = CGSize(width: 66, height: 66)
-        prop.position = CGPoint(x: size.width * 0.5, y: size.height * 0.45)
+        prop.size = CGSize(width: 150, height: 150)
+        prop.position = CGPoint(x: size.width * 0.5, y: size.height * 0.30)
         prop.zPosition = 4
         addChild(prop)
         leafRopeNode = prop

@@ -62,13 +62,21 @@ extension SKScene {
     func handleStationArrowTap(nodeName: String?, current: Station) -> Bool {
         switch nodeName {
         case "stationLeft":
-            goTo(current.previous.makeScene(size: size))
+            animateArrowThenGo(nodeName: "stationLeft") { self.goTo(current.previous.makeScene(size: self.size)) }
             return true
         case "stationRight":
-            goTo(current.next.makeScene(size: size))
+            animateArrowThenGo(nodeName: "stationRight") { self.goTo(current.next.makeScene(size: self.size)) }
             return true
         default:
             return false
         }
+    }
+
+    private func animateArrowThenGo(nodeName: String, then transition: @escaping () -> Void) {
+        guard let button = childNode(withName: nodeName) else {
+            transition()
+            return
+        }
+        runButtonTapAnimation(on: button, completion: transition)
     }
 }

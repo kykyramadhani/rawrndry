@@ -102,7 +102,9 @@ class HandoffScene: SKScene {
         let foreground = SKSpriteNode(imageNamed: AssetName.Item.foregroundDesk)
         foreground.size = self.size
         foreground.position = CGPoint.zero
-        foreground.zPosition = 10
+        // Below the interactive UI (settings button sits at zPosition 10) so it never
+        // steals settings-button taps that go through atPoint hit-testing.
+        foreground.zPosition = 5
         addChild(foreground)
     }
 
@@ -119,20 +121,12 @@ class HandoffScene: SKScene {
         // Already sealed by this point (see FoldingScene.completePackaging) — no folded-clothes
         // sprite peeking through, and the front uses the fully-tied state6 art, not state5's
         // rope-ready-but-untied look.
-        let back = SKSpriteNode(imageNamed: "packagingState5Back")
-        back.size = packageSize
-        back.zPosition = 0
-        packageNode.addChild(back)
 
         let front = SKSpriteNode(imageNamed: "frontdeskPackage")
         front.size = packageSize
         front.zPosition = 2
         packageNode.addChild(front)
 
-        let rope = SKSpriteNode(imageNamed: "packagingKnottedRope")
-        rope.size = CGSize(width: packageSize.width * 0.5, height: packageSize.height * 0.5)
-        rope.zPosition = 3
-        packageNode.addChild(rope)
 
         addChild(packageNode)
     }
@@ -190,10 +184,9 @@ class HandoffScene: SKScene {
         if handleSettingsButtonTap(nodeName: tappedNodeName(at: location)) { return }
 
         if instructionBtn.contains(location) {
-            let scaleDown = SKAction.scale(to: 0.7, duration: 0.1)
-            let scaleUp = SKAction.scale(to: 0.8, duration: 0.1)
-            instructionBtn.run(SKAction.sequence([scaleDown, scaleUp]))
-            showTipPopup(text: Loc.t(.infoHandoff))
+            runButtonTapAnimation(on: instructionBtn) {
+                self.showTipPopup(text: Loc.t(.infoHandoff))
+            }
             return
         }
 

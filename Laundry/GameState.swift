@@ -51,6 +51,10 @@ struct LaundryItemProgress {
     var isOnWashStone: Bool = false
     var isHungToDry: Bool = false
 
+    /// True once this item has been dragged from the Folding basket into the package —
+    /// lets FoldingScene resume mid-stack if the player leaves via the station arrows.
+    var isFolded: Bool = false
+
     /// Which numbered drying art variant (1...4) this item uses across the hanged/blown/
     /// picked/fallen/basket-pile textures — assigned once per item so it stays consistent.
     var dryingVariant: Int = 1

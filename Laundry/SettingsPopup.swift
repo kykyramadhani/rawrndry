@@ -36,7 +36,11 @@ extension SKScene {
     @discardableResult
     func handleSettingsButtonTap(nodeName: String?, onClose: (() -> Void)? = nil) -> Bool {
         guard nodeName == "settingsButton" else { return false }
-        showSettingsPopup(onClose: onClose)
+        guard let button = childNode(withName: "settingsButton") else {
+            showSettingsPopup(onClose: onClose)
+            return true
+        }
+        runButtonTapAnimation(on: button) { self.showSettingsPopup(onClose: onClose) }
         return true
     }
 

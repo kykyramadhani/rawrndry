@@ -122,7 +122,9 @@ class CustomerScene: SKScene {
         let foreground = SKSpriteNode(imageNamed: AssetName.Item.foregroundDesk)
         foreground.size = self.size
         foreground.position = CGPoint.zero
-        foreground.zPosition = 10
+        // Below the interactive UI (chevron/settings sit at zPosition 10) so it never
+        // steals settings-button taps that go through atPoint hit-testing.
+        foreground.zPosition = 5
         addChild(foreground)
     }
     
@@ -238,18 +240,15 @@ class CustomerScene: SKScene {
 
         if chevronBtn.contains(location) {
             self.isUserInteractionEnabled = false
-            let scaleDown = SKAction.scale(to: 0.7, duration: 0.1)
-            let scaleUp = SKAction.scale(to: 0.8, duration: 0.1)
-            chevronBtn.run(SKAction.sequence([scaleDown, scaleUp])) {
+            runButtonTapAnimation(on: chevronBtn) {
                 self.transitionToWashingScene()
             }
         }
-        
+
         if instructionBtn.contains(location) {
-            let scaleDown = SKAction.scale(to: 0.7, duration: 0.1)
-            let scaleUp = SKAction.scale(to: 0.8, duration: 0.1)
-            instructionBtn.run(SKAction.sequence([scaleDown, scaleUp]))
-            showTipPopup(text: Loc.t(.infoCustomer))
+            runButtonTapAnimation(on: instructionBtn) {
+                self.showTipPopup(text: Loc.t(.infoCustomer))
+            }
             return
         }
 
