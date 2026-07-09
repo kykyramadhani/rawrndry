@@ -44,7 +44,9 @@ enum AssetName {
         static let fly2 = "frontdeskFlies2"
         
         // Washing - Static
-        static let washingBasketEmpty = "washingBasket" 
+        static let washingBasketEmpty = "washingBasket"
+        static let bubbleParticle = "bubble"
+
         
         // Washing - Dynamic
         static func washingBasketPile(patternID: Int) -> String {

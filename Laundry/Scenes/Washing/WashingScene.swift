@@ -24,6 +24,11 @@ class WashingScene: SKScene {
     private var soapHolder2: SKSpriteNode!
     private var draggedSoap: SKSpriteNode?
     private var selectedSoapType: SoapFragrance?
+    
+    //bubble washing
+    private var lastBubbleLocation: CGPoint?
+    private let bubbleCooldownDistance: CGFloat = 20.0
+
 
     private var activeStains: [SKSpriteNode] = []
 
@@ -354,6 +359,8 @@ class WashingScene: SKScene {
                 draggedSoap?.position = location
                 draggedSoap?.zPosition = 25
                 if let newSoap = draggedSoap { addChild(newSoap) }
+            } else if spreadClothes.contains(location) {
+                showHint(Loc.t(.washingNoSoap), on: hintLabel)
             }
 
         case .readyToScrub, .scrubbing:
@@ -401,6 +408,17 @@ class WashingScene: SKScene {
 
                 lastTouchLocation = location
 
+                //bubbles
+                if let lastBubbleLoc = lastBubbleLocation {
+                    let distanceSinceLastBubble = hypot(location.x - lastBubbleLoc.x, location.y - lastBubbleLoc.y)
+                    if distanceSinceLastBubble >= bubbleCooldownDistance {
+                        createBubbleChips(at: location)
+                        lastBubbleLocation = location
+                    }
+                } else {
+                    lastBubbleLocation = location
+                }
+                
                 let progress = min(1.0, scrubAmount / requiredScrubAmount)
                 for stain in activeStains { stain.alpha = 1.0 - progress }
                 AudioManager.shared.playScrubbing()
@@ -471,9 +489,42 @@ class WashingScene: SKScene {
         }
 
         lastTouchLocation = nil
+        lastBubbleLocation = nil
     }
 
     override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
         touchesEnded(touches, with: event)
     }
+    
+    //MARK: bubbles
+    private func createBubbleChips(at point: CGPoint) {
+        let bubbleCount = Int.random(in: 1...3)
+        
+        for _ in 0..<bubbleCount {
+            let bubble = SKSpriteNode(imageNamed: AssetName.Item.bubbleParticle)
+            
+            let randomScale = CGFloat.random(in: 0.04...0.08)
+            bubble.setScale(randomScale)
+            
+            bubble.position = point
+            bubble.zPosition = 20
+            
+            addChild(bubble)
+            
+            let dx = CGFloat.random(in: -40...40)
+            let dy = CGFloat.random(in: -40...40)
+            
+            bubble.run(
+                .sequence([
+                    .group([
+                        .moveBy(x: dx, y: dy, duration: 0.3),
+                        .scale(to: randomScale * 1.3, duration: 0.3)
+                    ]),
+                    .fadeOut(withDuration: 0.1),
+                    .removeFromParent()
+                ])
+            )
+        }
+    }
+
 }
