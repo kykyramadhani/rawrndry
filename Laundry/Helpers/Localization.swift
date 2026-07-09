@@ -17,6 +17,13 @@ enum LocKey: String {
     case on
     case off
     case day
+    case ok
+    case start
+
+    // Onboarding, shown once before the player's very first day
+    case onboardingStep1
+    case onboardingStep2
+    case onboardingStep3
 
     // Info-button tip text, per scene
     case infoCustomer
@@ -54,6 +61,21 @@ enum Loc {
         .on: [.en: "ON", .id: "AKTIF"],
         .off: [.en: "OFF", .id: "MATI"],
         .day: [.en: "DAY", .id: "HARI"],
+        .ok: [.en: "OK", .id: "OK"],
+        .start: [.en: "START", .id: "MULAI"],
+
+        .onboardingStep1: [
+            .en: "Rawr rawrrr rawrr (hi i'm raptor)",
+            .id: "Rawr rawrrr rawrr (hai aku raptor)"
+        ],
+        .onboardingStep2: [
+            .en: "Rawrr rawrr rawr rawrr (help me manage my laundry business)",
+            .id: "Rawrr rawrr rawr rawrr (bantu aku mengelola bisnis cucian)"
+        ],
+        .onboardingStep3: [
+            .en: "Rawrrrrrrrr (the customer will came, take their dirty clothes, wash it, dry it, and fold it)",
+            .id: "Rawrrrrrrrr (pelanggan akan datang, ambil baju kotor mereka, cuci, keringkan, dan lipat dengan rapi)"
+        ],
 
         .infoCustomer: [
             .en: "Press the sack to proceed to washing process",

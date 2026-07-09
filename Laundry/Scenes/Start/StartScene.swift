@@ -138,11 +138,15 @@ class StartScene: SKScene {
         }
     }
 
+    /// Day 1's first customer is always preceded by the raptor's onboarding intro; every
+    /// later day (or a resumed Day 1 after it's already begun) skips straight to the front desk.
     private func goToGameScene() {
-        let gameScene = CustomerScene(size: self.size)
-        gameScene.scaleMode = .aspectFit 
-        
+        let nextScene: SKScene = GameState.shared.currentDay == 1
+            ? OnboardingScene(size: self.size)
+            : CustomerScene(size: self.size)
+        nextScene.scaleMode = .aspectFit
+
         let transition = SKTransition.fade(withDuration: 1.0)
-        self.view?.presentScene(gameScene, transition: transition)
+        self.view?.presentScene(nextScene, transition: transition)
     }
 }

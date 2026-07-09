@@ -207,7 +207,7 @@ class DryingScene: SKScene {
     /// smaller, offset sliver), for every pattern 1...4.
     private func addBasketVisual() {
         basketNode = SKSpriteNode(imageNamed: "dryingBasket")
-        basketNode.size = CGSize(width: 100, height: 78)
+        basketNode.size = CGSize(width: 120, height: 120)
         basketNode.position = basketPosition
         basketNode.zPosition = 2
         addChild(basketNode)
@@ -219,7 +219,7 @@ class DryingScene: SKScene {
         addChild(basketPiles)
 
         dryBasketNode = SKSpriteNode(imageNamed: "dryingBasket")
-        dryBasketNode.size = CGSize(width: 100, height: 78)
+        dryBasketNode.size = CGSize(width: 120, height: 120)
         dryBasketNode.position = dryBasketPosition
         dryBasketNode.zPosition = 2
         addChild(dryBasketNode)

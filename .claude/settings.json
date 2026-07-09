@@ -42,10 +42,44 @@
       "Bash(osascript -e 'tell application \"System Events\" to click at {100,100}')",
       "Bash(swiftc -O AssetName.swift LaundryItem.swift CustomerModel.swift LevelDesign.swift CustomerManager.swift GameState.swift main.swift -o runtest)",
       "Bash(/private/tmp/claude-501/-Users-auliaguss-Projects-Games-Laundry/cf62751a-6c07-499c-aba5-4c47d1eeae2c/scratchpad/logictest/runtest)",
-      "Bash(./runtest)"
+      "Bash(./runtest)",
+      "Bash(sips -g pixelWidth -g pixelHeight /Users/auliaguss/Projects/Games/Laundry/Laundry/Asset/Assets.xcassets/btnInstruction.imageset/btnInstruction.png /Users/auliaguss/Projects/Games/Laundry/Laundry/Asset/Assets.xcassets/btnSettings.imageset/btnSettings.png)",
+      "Bash(xcodebuild -project Laundry.xcodeproj -scheme Laundry -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' build)",
+      "Bash(git -C /Users/auliaguss/Projects/Games/Laundry diff --stat -- Laundry/FoldingScene.swift Laundry/GameState.swift)",
+      "Bash(idb --version)",
+      "Bash(xcodebuild -project Laundry.xcodeproj -scheme Laundry -destination \"id=8872C8F3-516C-4D97-B2B3-C65778812258\" -configuration Debug build)",
+      "Bash(xcodebuild -project Laundry.xcodeproj -scheme Laundry -showdestinations)",
+      "Bash(xcodebuild -project Laundry.xcodeproj -scheme Laundry -destination \"id=FCBA5926-7E41-4BB2-8A21-31EB84F11A2E\" -configuration Debug build)",
+      "Bash(open -a Simulator --args -CurrentDeviceUDID FCBA5926-7E41-4BB2-8A21-31EB84F11A2E)",
+      "Bash(kill %1)",
+      "Bash(wait)",
+      "Bash(brew list *)",
+      "Bash(brew install *)",
+      "Bash(git -C /Users/auliaguss/Projects/Games/Laundry log -p --follow -- Laundry/Scenes/Washing/WashingScene.swift)",
+      "Bash(osascript -e ' *)",
+      "Bash(osascript -e 'tell application \"Simulator\" to get bounds of front window')",
+      "Bash(osascript -e 'tell application \"System Events\" to tell process \"Simulator\" to get properties')",
+      "Bash(python3 -)",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(git reset *)",
+      "Bash(git checkout *)",
+      "Bash(echo \"diffexit:$?\")",
+      "Bash(awk '/private func resolveClothesDrop/,/^    }/')",
+      "Bash(awk '/private func completePackaging/,/^    }/')",
+      "Bash(awk '/override func didMove/,/^    }/')",
+      "Bash(python3 -c ' *)",
+      "Bash(xcodebuild -project Laundry.xcodeproj -scheme Laundry -configuration Debug -sdk iphonesimulator -destination \"generic/platform=iOS Simulator\" build)",
+      "Bash(xargs ls -la)",
+      "Bash(xcodebuild -project Laundry.xcodeproj -scheme Laundry -destination 'generic/platform=iOS Simulator' -sdk iphonesimulator build)",
+      "Bash(sips -r -90 onboarding1.png --out onboarding1_rot.png)",
+      "Bash(osascript -e 'tell application \"System Events\" to tell process \"Simulator\" to get {position, size} of window 1')",
+      "Bash(cliclick p:.)",
+      "Bash(sips -r -90 onboarding3.png --out onboarding3_rot.png)",
+      "Bash(sips -r -90 flow1_start.png --out flow1_start_rot.png)"
     ],
     "additionalDirectories": [
-      "/Users/auliaguss/Projects/Games/Laundry/Laundry/Assets.xcassets/dress.imageset"
+      "/Users/auliaguss/Projects/Games/Laundry/Laundry/Assets.xcassets/dress.imageset",
+      "/Users/auliaguss/Projects/Games/Laundry/Laundry/Asset/Assets.xcassets/startBackground.imageset"
     ]
   }
 }

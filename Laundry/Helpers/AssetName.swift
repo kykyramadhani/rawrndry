@@ -33,6 +33,7 @@ enum AssetName {
         static let customer2 = "frontdeskCustomer2"
         static let customer3 = "frontdeskCustomer3"
         static let customer4 = "frontdeskCustomer4"
+        static let raptor = "frontdeskRaptor"
     }
     
     enum Item {
