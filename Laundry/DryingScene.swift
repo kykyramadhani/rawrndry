@@ -415,7 +415,8 @@ class DryingScene: SKScene {
     private func startMicEngine() {
         do {
             let session = AVAudioSession.sharedInstance()
-            try session.setCategory(.record, mode: .measurement)
+//            try session.setCategory(.record, mode: .measurement)
+            try session.setCategory(.playAndRecord, mode: .measurement, options: [.defaultToSpeaker, .mixWithOthers])
             try session.setActive(true)
         } catch {
             print("❌ [Mic] Engine Setup Failed: \(error)")
@@ -446,16 +447,23 @@ class DryingScene: SKScene {
     }
 
     private func stopMicEngine() {
-        micEngine.inputNode.removeTap(onBus: 0)
-        micEngine.stop()
-        try? AVAudioSession.sharedInstance().setActive(false)
-        micEngineStarted = false
-        
-        // Teardown Classifier
-        streamAnalyzer?.removeAllRequests()
-        streamAnalyzer = nil
-        audioFramePosition = 0
-    }
+            micEngine.inputNode.removeTap(onBus: 0)
+            micEngine.stop()
+            micEngineStarted = false
+            
+            // Teardown Classifier
+            streamAnalyzer?.removeAllRequests()
+            streamAnalyzer = nil
+            audioFramePosition = 0
+            
+            do {
+                let session = AVAudioSession.sharedInstance()
+                try session.setCategory(.ambient, mode: .default, options: [])
+                try session.setActive(true)
+            } catch {
+                print("❌ [Mic] Gagal mengembalikan sesi audio: \(error.localizedDescription)")
+            }
+        }
     
     private func setupSoundClassifier(format: AVAudioFormat) {
         streamAnalyzer = SNAudioStreamAnalyzer(format: format)
