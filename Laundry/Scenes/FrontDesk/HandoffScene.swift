@@ -279,8 +279,13 @@ class HandoffScene: SKScene {
         // The payout is fixed by the day's level design (see LevelDesign), not derived from
         // clothes count here, so it can't drift from what the front desk quoted the player.
         let base = GameState.shared.currentOrderReward
-        let deduction = GameState.shared.tornItemsCount * 50
+        let deduction = GameState.shared.wrongSoapCount * 50
         GameState.shared.coinsEarned = max(0, base - deduction)
+
+        if GameState.shared.wrongSoapCount == 0 {
+            GameCenterManager.shared.unlock(.flawlessOrder)
+        }
+        GameCenterManager.shared.advance(.rawrTycoon, by: Double(GameState.shared.coinsEarned))
     }
 
     // MARK: - Reward popup
@@ -372,7 +377,12 @@ class HandoffScene: SKScene {
                 // completeHandoff), so tapping OK here always advances to the next day —
                 // StartScene continues into it (or shows "more levels coming soon" once the
                 // design table runs out).
+                if self.starCount() == 3 { GameCenterManager.shared.unlock(.threeStarDay) }
+
                 GameState.shared.currentDay += 1
+                if GameState.shared.currentDay > LevelDesign.days.count {
+                    GameCenterManager.shared.unlock(.fullCycle)
+                }
                 self.goTo(StartScene(size: self.size))
             }
         }

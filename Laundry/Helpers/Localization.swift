@@ -77,6 +77,13 @@ enum LocKey: String {
     case customerOrderCleanGood
     case customerOrderSmellRose
     case customerOrderSmellSoapFruit
+    case customerOrderAnySoap
+
+    // The paper order slip pinned in the washing HUD
+    case orderNoteTitle
+    case orderNoteSoap
+    case orderNoteAnySoap
+    case orderNoteClothes
 }
 
 enum Loc {
@@ -262,7 +269,13 @@ enum Loc {
         .customerOrderQuickWait: [.en: "%@. QUICK. ME WAIT.", .id: "%@. CEPAT. SAYA TUNGGU."],
         .customerOrderCleanGood: [.en: "%@. CLEAN GOOD.", .id: "%@. CUCI BERSIH."],
         .customerOrderSmellRose: [.en: "ROSE. SMELL NICE.", .id: "MAWAR. HARUM."],
-        .customerOrderSmellSoapFruit: [.en: "SOAPFRUIT. SMELL FRESH.", .id: "BUAH LERAK. SEGAR."]
+        .customerOrderSmellSoapFruit: [.en: "SOAPFRUIT. SMELL FRESH.", .id: "BUAH LERAK. SEGAR."],
+        .customerOrderAnySoap: [.en: "WASH THESE. ANY SOAP OK.", .id: "CUCI INI. SABUN APA SAJA."],
+
+        .orderNoteTitle: [.en: "ORDER", .id: "PESANAN"],
+        .orderNoteSoap: [.en: "SOAP", .id: "SABUN"],
+        .orderNoteAnySoap: [.en: "ANY", .id: "BEBAS"],
+        .orderNoteClothes: [.en: "CLOTHES", .id: "BAJU"]
     ]
 
     static func t(_ key: LocKey) -> String {

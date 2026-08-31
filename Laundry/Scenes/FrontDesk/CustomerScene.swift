@@ -81,7 +81,7 @@ class CustomerScene: SKScene {
         return CustomerModel(
             characterImage: state.currentCustomerImage,
             itemsToWash: state.currentOrderItems,
-            requestedSoap: state.currentOrderItems.first?.requestedSoap ?? .rose,
+            requestedSoap: state.currentOrderItems.first?.requestedSoap,
             reward: state.currentOrderReward,
             customerIndexInDay: -1
         )

@@ -12,7 +12,10 @@ struct CustomerModel {
     let characterImage: String
     let itemsToWash: [LaundryItem]
 
-    let requestedSoap: SoapFragrance
+    /// The fragrance this customer insists on, or nil when any soap will do — the same value
+    /// every item in `itemsToWash` carries, so the speech bubble can never promise a soap the
+    /// washing station won't actually check for.
+    let requestedSoap: SoapFragrance?
 
     /// Coins paid out for this order, fixed by the day's level design — not derived from
     /// clothes count at handoff time, so the payout can't drift from the design table.
@@ -23,13 +26,12 @@ struct CustomerModel {
     let customerIndexInDay: Int
 
     var orderText: String {
-        let isRose = requestedSoap == .rose
-        let soapDisplayName = Loc.t(isRose ? .soapDisplayNameRose : .soapDisplayNameSoapFruit)
+        guard let requestedSoap else { return Loc.t(.customerOrderAnySoap) }
 
         let dialogues = [
-            String(format: Loc.t(.customerOrderQuickWait), soapDisplayName),
-            String(format: Loc.t(.customerOrderCleanGood), soapDisplayName),
-            Loc.t(isRose ? .customerOrderSmellRose : .customerOrderSmellSoapFruit)
+            String(format: Loc.t(.customerOrderQuickWait), requestedSoap.displayName),
+            String(format: Loc.t(.customerOrderCleanGood), requestedSoap.displayName),
+            Loc.t(requestedSoap == .rose ? .customerOrderSmellRose : .customerOrderSmellSoapFruit)
         ]
 
         return dialogues.randomElement()!

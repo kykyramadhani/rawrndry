@@ -19,15 +19,18 @@ struct RawrndyApp: App {
 }
 
 struct ContentView: View {
-    var scene: SKScene {
-        let scene = StartScene(size: CGSize(width: 844, height: 390)) 
+    /// Stored, not computed: a computed property here handed SpriteView a brand-new StartScene
+    /// on every re-render, throwing away whatever scene the player was actually in.
+    @State private var scene: SKScene = {
+        let scene = StartScene(size: CGSize(width: 844, height: 390))
         scene.scaleMode = .aspectFill
         return scene
-    }
+    }()
 
     var body: some View {
         SpriteView(scene: scene)
             .ignoresSafeArea()
             .statusBar(hidden: true)
+            .task { GameCenterManager.shared.authenticate() }
     }
 }

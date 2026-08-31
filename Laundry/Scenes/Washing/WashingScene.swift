@@ -38,6 +38,12 @@ class WashingScene: SKScene {
     private var lastBubbleLocation: CGPoint?
     private let bubbleCooldownDistance: CGFloat = 20.0
 
+    /// The fragrance burst sitting on the current item — petals or foam, thinning out as the
+    /// item is scrubbed. Nil whenever no soap has been applied to whatever's on the stone.
+    private var soapSpray: SKNode?
+    /// The alpha `soapSpray` settled at, so scrubbing fades it out from the right starting point.
+    private var soapSprayOpacity: CGFloat = 0.9
+
 
     private var activeStains: [SKSpriteNode] = []
 
@@ -88,7 +94,12 @@ class WashingScene: SKScene {
         // This scene uses a centered anchorPoint (see above), so HUD/button positions are
         // offsets from scene-center rather than the bottom-left-anchor fractions used in the
         // other scenes (e.g. size.width * 0.85 for a "near the right edge" button here).
-        addCurrencyHUD(topLeftOrigin: CGPoint(x: -size.width * 0.45, y: size.height * 0.40), day: GameState.shared.currentDay, coins: GameState.shared.score)
+        let hud = addCurrencyHUD(topLeftOrigin: CGPoint(x: -size.width * 0.45, y: size.height * 0.40), day: GameState.shared.currentDay, coins: GameState.shared.score)
+
+        // The order slip hangs off the top edge just right of the gem badge — same corner as
+        // the day marker, so "what did they ask for again?" never means walking back to the
+        // front desk mid-wash.
+        addOrderNote(topEdgeAnchor: CGPoint(x: hud.gem.frame.maxX + 36, y: size.height * 0.5))
 
         setupLeftBasket()
         setupClothesOnSteps()
@@ -238,6 +249,9 @@ class WashingScene: SKScene {
         activeStains.forEach { $0.removeFromParent() }
         activeStains.removeAll()
 
+        soapSpray?.removeFromParent()
+        soapSpray = nil
+
         requiredScrubAmount = (item.stain == .hard) ? 1200.0 : 600.0
         scrubAmount = 0.0
 
@@ -273,6 +287,9 @@ class WashingScene: SKScene {
         if isValid {
             applySoap(selectedSoap, soapNode: soapNode)
         } else {
+            // Counted against the payout at handoff — without this the deduction there had
+            // nothing to deduct for, so every order scored a silent three stars.
+            GameState.shared.wrongSoapCount += 1
             showHint(Loc.t(.WashingWrongSoap), on: hintLabel)
             soapNode.removeFromParent()
             draggedSoap = nil
@@ -288,6 +305,14 @@ class WashingScene: SKScene {
         draggedSoap = nil
         selectedSoapType = nil
 
+        showSoapSpray(soap)
+
+        // Only counts when the customer actually named a fragrance — matching "anything goes"
+        // takes no skill.
+        if itemsToWash[currentItemIndex].requestedSoap != nil {
+            GameCenterManager.shared.advance(.soapSommelier, by: 1)
+        }
+
         currentState = .readyToScrub
 
         // "The clothes and the stone" — spreadClothes sits directly on the washing stone
@@ -300,6 +325,13 @@ class WashingScene: SKScene {
     private func finishScrubbing() {
         currentState = .clean
         activeStains.forEach { $0.isHidden = true }
+
+        soapSpray?.run(.sequence([.fadeOut(withDuration: 0.4), .removeFromParent()]))
+        soapSpray = nil
+        lastBubbleLocation = nil
+
+        GameCenterManager.shared.advance(.elbowGrease, by: Double(requiredScrubAmount))
+
         AudioManager.shared.stopScrubbing()
         HapticsManager.shared.stopScrubbing()
         showHint(Loc.t(.washingHintClean), on: hintLabel)
@@ -324,7 +356,11 @@ class WashingScene: SKScene {
         // Mark this specific item washed in GameState right away — not only once the whole
         // queue is done — so progress survives leaving mid-order (e.g. to peek at Drying)
         // and coming back, instead of only living in this scene's local state until the end.
-        GameState.shared.itemProgress[currentItemIndex].washProgress = 1
+        if GameState.shared.itemProgress.indices.contains(currentItemIndex) {
+            GameState.shared.itemProgress[currentItemIndex].washProgress = 1
+        }
+
+        GameCenterManager.shared.unlock(.firstWash)
 
         currentItemIndex += 1
         updateBasketPile()
@@ -350,10 +386,12 @@ class WashingScene: SKScene {
         // Settings & Popup Handlers
         if handleSettingsPopupTouchesBegan(at: location) { return }
         if handleTipPopupTap(at: location) { return }
+        if handleOrderPopupTap(at: location) { return }
         if handleHomeConfirmPopupTap(at: location) { return }
         if handleStationArrowTap(nodeName: name, current: .washing) { return }
         if handleSettingsButtonTap(nodeName: name) { return }
         if handleHomeButtonTap(nodeName: name) { return }
+        if handleOrderNoteTap(nodeName: name) { return }
 
         // Help Button Handler
         if name == "help" {
@@ -455,6 +493,7 @@ class WashingScene: SKScene {
                 
                 let progress = min(1.0, scrubAmount / requiredScrubAmount)
                 for stain in activeStains { stain.alpha = 1.0 - progress }
+                soapSpray?.alpha = soapSprayOpacity * (1 - progress * 0.65)
                 AudioManager.shared.playScrubbing()
                 HapticsManager.shared.updateScrubbing(velocity: velocity)
 
@@ -480,6 +519,9 @@ class WashingScene: SKScene {
 
             if rockArea.contains(pickedClothes.position) {
                 pickedClothes.isHidden = true
+                // Nothing left in the queue would otherwise leave the scene stuck in
+                // .draggingDirty forever, with no way back to .idle.
+                currentState = .idle
 
                 if currentItemIndex < itemsToWash.count {
                     let currentItem = itemsToWash[currentItemIndex]
@@ -503,7 +545,13 @@ class WashingScene: SKScene {
             }
 
         case .draggingSoap:
-            guard let dragged = draggedSoap, let soapType = selectedSoapType else { return }
+            guard let dragged = draggedSoap, let soapType = selectedSoapType else {
+                draggedSoap?.removeFromParent()
+                draggedSoap = nil
+                selectedSoapType = nil
+                currentState = .waitingSoap
+                return
+            }
 
             if spreadClothes.contains(dragged.position) {
                 validateSoapDrop(soapType, soapNode: dragged)
@@ -534,16 +582,49 @@ class WashingScene: SKScene {
         touchesEnded(touches, with: event)
     }
     
+    //MARK: soap spray
+
+    /// The visible "soap is on" layer — the fragrance's own art thrown across the clothes,
+    /// settling into a translucent film that thins out as the item comes clean. Lives as a
+    /// child of `spreadClothes` so it travels with the clothes and dies with them.
+    private func showSoapSpray(_ soap: SoapFragrance) {
+        soapSpray?.removeFromParent()
+
+        let spray = SKNode()
+        spray.name = "soapSpray"
+        spray.zPosition = 2
+        spray.alpha = 0
+        spreadClothes.addChild(spray)
+        soapSpray = spray
+
+        let piece = SKSpriteNode(imageNamed: soap.sprayTexture)
+        piece.size = soap.spraySize
+        piece.zRotation = CGFloat.random(in: -0.5...0.5)
+        piece.position = CGPoint(x: CGFloat.random(in: -14...14), y: CGFloat.random(in: -14...14))
+        piece.setScale(0.5)
+        spray.addChild(piece)
+
+        // Overshoots then settles back to exactly `spraySize` — the burst reads as thrown on,
+        // but the art ends up at the size it was drawn for.
+        piece.run(.sequence([
+            .scale(to: 1.08, duration: 0.22),
+            .scale(to: 1.0, duration: 0.12)
+        ]))
+
+        soapSprayOpacity = soap.sprayOpacity
+        spray.run(.fadeAlpha(to: soapSprayOpacity, duration: 0.2))
+    }
+
     //MARK: bubbles
     private func createBubbleChips(at point: CGPoint) {
         let bubbleCount = Int.random(in: 1...3)
         
         for _ in 0..<bubbleCount {
             let bubble = SKSpriteNode(imageNamed: AssetName.Item.bubbleParticle)
-            
-            let randomScale = CGFloat.random(in: 0.04...0.08)
-            bubble.setScale(randomScale)
-            
+
+            let diameter = CGFloat.random(in: 12...26)
+            bubble.size = CGSize(width: diameter, height: diameter)
+
             bubble.position = point
             bubble.zPosition = 20
             
@@ -556,7 +637,7 @@ class WashingScene: SKScene {
                 .sequence([
                     .group([
                         .moveBy(x: dx, y: dy, duration: 0.3),
-                        .scale(to: randomScale * 1.3, duration: 0.3)
+                        .scale(to: 1.3, duration: 0.3)
                     ]),
                     .fadeOut(withDuration: 0.1),
                     .removeFromParent()

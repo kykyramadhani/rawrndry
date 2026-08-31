@@ -36,10 +36,10 @@ class CustomerManager {
             availablePatterns.shuffle()
 
             // 1. Tentukan Sabun di awal
-            // Acak apakah pelanggan ini punya request spesifik atau bebas (nil)
-            let hasSpecificRequest = Bool.random()
-            let randomSoap: SoapFragrance = Bool.random() ? .rose : .soapFruit
-            let itemRequestedSoap: SoapFragrance? = hasSpecificRequest ? randomSoap : nil
+            // Acak apakah pelanggan ini punya request spesifik atau bebas (nil).
+            // Satu nilai ini dipakai pelanggan DAN semua bajunya, jadi apa yang diucapkan
+            // di front desk persis yang divalidasi di washing scene.
+            let itemRequestedSoap: SoapFragrance? = Bool.random() ? (Bool.random() ? .rose : .soapFruit) : nil
 
             var clothes: [LaundryItem] = []
 
@@ -61,7 +61,7 @@ class CustomerManager {
             let newCustomer = CustomerModel(
                 characterImage: randomCharacter,
                 itemsToWash: clothes,
-                requestedSoap: randomSoap, // Tetap diteruskan agar CustomerModel tidak error dan teks bubble tetap ada
+                requestedSoap: itemRequestedSoap,
                 reward: customerConfig.reward,
                 customerIndexInDay: index
             )

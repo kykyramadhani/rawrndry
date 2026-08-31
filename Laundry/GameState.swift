@@ -45,10 +45,6 @@ enum ClothingType: CaseIterable {
 struct LaundryItemProgress {
     var washProgress: CGFloat = 0
     var dryProgress: CGFloat = 0
-    /// True while the item sits on the washing stone — either mid-scrub or clean and
-    /// awaiting the drag into the clean basket. False means it's in the dirty pile
-    /// (washProgress == 0) or already delivered to the clean basket (washProgress >= 1).
-    var isOnWashStone: Bool = false
     var isHungToDry: Bool = false
 
     /// True once this item has been dragged from the Folding basket into the package —
@@ -83,8 +79,9 @@ final class GameState {
     /// work when leaving Washing mid-order (e.g. to peek at Drying) and coming back.
     var currentOrderItems: [LaundryItem] = []
 
-    /// Number of items torn while washing this order — deducted from the handoff payout.
-    var tornItemsCount: Int = 0
+    /// Times the player reached for the wrong fragrance on this order — deducted from the
+    /// handoff payout, and what keeps every order from silently scoring three stars.
+    var wrongSoapCount: Int = 0
 
     /// Whether the Folding station's leaf-wrap package has been tied off for this order.
     var isPackaged: Bool = false
@@ -145,7 +142,7 @@ final class GameState {
             progress.dryingVariant = item.patternID
             return progress
         }
-        tornItemsCount = 0
+        wrongSoapCount = 0
         isPackaged = false
         orderGeneratedDay = currentDay
 
@@ -156,7 +153,7 @@ final class GameState {
     /// Clears the just-finished order so the next `CustomerScene` starts a fresh customer
     /// instead of `resumingCustomer()` mistaking the completed order for one still in progress.
     func completeCurrentOrder() {
-        tornItemsCount = 0
+        wrongSoapCount = 0
         itemProgress = []
         currentOrderItems = []
         isPackaged = false
@@ -167,7 +164,7 @@ final class GameState {
     /// used by the home-button "are you sure you want to go back?" confirm. Leaves `currentDay`
     /// and any already-banked `score` untouched, since only *this* day is starting over.
     func restartCurrentDay() {
-        tornItemsCount = 0
+        wrongSoapCount = 0
         itemProgress = []
         currentOrderItems = []
         isPackaged = false
@@ -183,7 +180,7 @@ final class GameState {
         clothesCount = 1
         clothesTypes = []
         orderType = .washOnly
-        tornItemsCount = 0
+        wrongSoapCount = 0
         itemProgress = []
         currentOrderItems = []
         isPackaged = false
