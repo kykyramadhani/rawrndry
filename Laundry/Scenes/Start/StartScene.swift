@@ -36,7 +36,7 @@ class StartScene: SKScene {
         button.position = CGPoint(x: 0, y: -self.size.height * 0.3)
         button.zPosition = 1
 
-        let startLabel = SKLabelNode(text: GameState.shared.currentDay == 1 ? "START" : "CONTINUE") //TODO: Localize
+        let startLabel = SKLabelNode(text: GameState.shared.currentDay == 1 ? Loc.t(.start) : Loc.t(.startContinue))
         startLabel.fontName = "ValdursansComicaNo1-Regular"
 
         startLabel.fontSize = 35
@@ -52,7 +52,7 @@ class StartScene: SKScene {
     /// Shown once the player has cleared every day LevelDesign currently defines — no more
     /// designed content exists, so offer a fresh run instead of a dead-end START button.
     private func setupComingSoon() {
-        let messageLabel = SKLabelNode(text: "MORE LEVELS COMING SOON!") //TODO: Localize
+        let messageLabel = SKLabelNode(text: Loc.t(.startMoreLevelsComingSoon))
         messageLabel.fontName = "ValdursansComicaNo1-Regular"
         messageLabel.fontSize = 28
         messageLabel.fontColor = .white
@@ -69,7 +69,7 @@ class StartScene: SKScene {
         button.position = CGPoint(x: 0, y: -self.size.height * 0.3)
         button.zPosition = 1
 
-        let newGameLabel = SKLabelNode(text: "START NEW GAME") //TODO: Localize
+        let newGameLabel = SKLabelNode(text: Loc.t(.startNewGame))
         newGameLabel.fontName = "ValdursansComicaNo1-Regular"
         newGameLabel.fontSize = 22
         newGameLabel.fontColor = .white

@@ -84,6 +84,24 @@ enum LocKey: String {
     case orderNoteSoap
     case orderNoteAnySoap
     case orderNoteClothes
+    
+    // Handoff thank you lines, spoken once the package is handed to the customer
+    case handoffThankYouClean
+    case handoffThankYouFresh
+    case handoffThankYouPay
+    case handoffThankYouSmell
+    
+    // StartScene
+    case startContinue
+    case startMoreLevelsComingSoon
+    case startNewGame
+
+    // DryingScene
+    case dryingAllDry
+    case dryingTooHardFell
+
+    // PackagingScene
+    case packagingSwipeToFoldLeaf
 }
 
 enum Loc {
@@ -97,7 +115,7 @@ enum Loc {
         .off: [.en: "OFF", .id: "MATI", .es: "APAGADO"],
         .day: [.en: "DAY", .id: "HARI", .es: "DÍA"],
         .ok: [.en: "OK", .id: "OK", .es: "OK"],
-        .start: [.en: "START", .id: "MULAI", .es: "COMENZAR"],
+        .start: [.en: "START", .id: "MULAI", .es: "EMPEZAR"],
         .yes: [.en: "YES", .id: "YA", .es: "SÍ"],
         .cancel: [.en: "CANCEL", .id: "BATAL", .es: "CANCELAR"],
         .homeConfirmMessage: [
@@ -337,7 +355,53 @@ enum Loc {
         .orderNoteTitle: [.en: "ORDER", .id: "PESANAN", .es: "PEDIDO"],
         .orderNoteSoap: [.en: "SOAP", .id: "SABUN", .es: "JABÓN"],
         .orderNoteAnySoap: [.en: "ANY", .id: "BEBAS", .es: "CUALQUIERA"],
-        .orderNoteClothes: [.en: "CLOTHES", .id: "BAJU", .es: "ROPA"]
+        .orderNoteClothes: [.en: "CLOTHES", .id: "BAJU", .es: "ROPA"],
+        
+        // Handoff thank you lines
+        .handoffThankYouClean: [
+            .en: "CLEAN! ME HAPPY!",
+            .id: "BERSIH! AKU SENANG!",
+            .es: "¡LIMPIO! ¡YO, FELIZ!"
+        ],
+        .handoffThankYouFresh: [
+            .en: "SO FRESH! THANK YOU!",
+            .id: "SEGAR! TERIMA KASIH!",
+            .es: "¡FRESCO! ¡YO AGRADECER!"
+        ],
+        .handoffThankYouPay: [
+            .en: "GOOD JOB! ME PAY!",
+            .id: "KERJA BAGUS! AKU BAYAR!",
+            .es: "¡TRABAJO BUENO! ¡YO PAGAR!"
+        ],
+        .handoffThankYouSmell: [
+            .en: "SMELL NICE! TAKE COIN!",
+            .id: "WANGI! AMBIL KOIN!",
+            .es: "¡OLOR BUENO! ¡DAR MONEDA!"
+        ],
+        .startContinue: [.en: "CONTINUE", .id: "LANJUTKAN", .es: "CONTINUAR"],
+        .startMoreLevelsComingSoon: [
+            .en: "MORE LEVELS COMING SOON!",
+            .id: "LEVEL LEBIH BANYAK SEGERA HADIR!",
+            .es: "¡MÁS NIVELES PRÓXIMAMENTE!"
+        ],
+        .startNewGame: [
+            .en: "START NEW GAME",
+            .id: "MULAI PERMAINAN BARU",
+            .es: "EMPEZAR NUEVO JUEGO"
+        ],
+
+        .dryingAllDry: [.en: "All dry!", .id: "Semua sudah kering!", .es: "¡Todo seco!"],
+        .dryingTooHardFell: [
+            .en: "Too hard! It fell!",
+            .id: "Terlalu keras! Jatuh!",
+            .es: "¡Muy fuerte! ¡Se cayó!"
+        ],
+
+        .packagingSwipeToFoldLeaf: [
+            .en: "Swipe to fold the leaf!",
+            .id: "Geser untuk melipat daunnya!",
+            .es: "¡Desliza para doblar la hoja!"
+        ]
     ]
 
     static func t(_ key: LocKey) -> String {

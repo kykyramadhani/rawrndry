@@ -661,7 +661,7 @@ class DryingScene: SKScene {
         updateBlowBar()
 
         if GameState.shared.isFullyDried {
-            showStatus("All dry!")
+            showStatus(Loc.t(.dryingAllDry))
             run(.sequence([.wait(forDuration: 1.5), .run { [weak self] in self?.hideStatus() }]))
 
             if tutorialActive {
@@ -702,7 +702,7 @@ class DryingScene: SKScene {
         }
         guard !fallingIndices.isEmpty else { return }
 
-        showStatus("Too hard! It fell!") //TODO: add localization
+        showStatus(Loc.t(.dryingTooHardFell))
         run(.sequence([.wait(forDuration: 1.0), .run { [weak self] in self?.hideStatus() }]))
         
         // Memicu goyangan layar (camera shake)
