@@ -27,7 +27,7 @@ class HandoffScene: SKScene {
     private let plainTextColor = UIColor(red: 255.0/255.0, green: 247.0/255.0, blue: 234.0/255.0, alpha: 1.0)
     private let plainTextBrown = UIColor(red: 143.0/255.0, green: 43.0/255.0, blue: 18.0/255.0, alpha: 1.0)
 
-    private let thankYouTexts = [
+    private let thankYouTexts = [ //TODO: add localization
         "CLEAN! ME HAPPY!",
         "SO FRESH! THANK YOU!",
         "GOOD JOB! ME PAY!",
@@ -244,7 +244,7 @@ class HandoffScene: SKScene {
     }
 
     private func completeHandoff() {
-        bubbleLabel.text = (thankYouTexts.randomElement() ?? "THANK YOU!").uppercased()
+        bubbleLabel.text = (thankYouTexts.randomElement() ?? "THANK YOU!").uppercased() //TODO: localize default
 
         let popUp = SKAction.scale(to: 1.0, duration: 0.3)
         let popBounce = SKAction.scale(to: 0.95, duration: 0.1)

@@ -702,7 +702,7 @@ class DryingScene: SKScene {
         }
         guard !fallingIndices.isEmpty else { return }
 
-        showStatus("Too hard! It fell!")
+        showStatus("Too hard! It fell!") //TODO: add localization
         run(.sequence([.wait(forDuration: 1.0), .run { [weak self] in self?.hideStatus() }]))
         
         // Memicu goyangan layar (camera shake)

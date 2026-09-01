@@ -11,6 +11,7 @@ import Foundation
 enum AppLanguage: String {
     case en
     case id
+    case es
 }
 
 final class SettingsManager {

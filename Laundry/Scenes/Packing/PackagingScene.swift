@@ -32,7 +32,7 @@ class PackagingScene: SKScene {
         leafNode.zPosition = 0
         addChild(leafNode)
         
-        let instruction = SKLabelNode(text: "Swipe to fold the leaf!")
+        let instruction = SKLabelNode(text: "Swipe to fold the leaf!") //TODO: localize
         instruction.position = CGPoint(x: frame.midX, y: frame.minY + 50)
         instruction.fontSize = 24
         addChild(instruction)
