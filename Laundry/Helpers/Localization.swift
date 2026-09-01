@@ -2,7 +2,7 @@
 //  Localization.swift
 //  Laundry
 //
-//  Minimal EN/ID string table. Most of the game's copy is still hardcoded English —
+//  EN/ID/ES string table. Most of the game's copy is still hardcoded English —
 //  this covers the Settings popup and the shared HUD, and is meant to grow key by key.
 //
 
@@ -84,198 +84,324 @@ enum LocKey: String {
     case orderNoteSoap
     case orderNoteAnySoap
     case orderNoteClothes
+    
+    // Handoff thank you lines, spoken once the package is handed to the customer
+    case handoffThankYouClean
+    case handoffThankYouFresh
+    case handoffThankYouPay
+    case handoffThankYouSmell
+    
+    // StartScene
+    case startContinue
+    case startMoreLevelsComingSoon
+    case startNewGame
+
+    // DryingScene
+    case dryingAllDry
+    case dryingTooHardFell
+
+    // PackagingScene
+    case packagingSwipeToFoldLeaf
 }
 
 enum Loc {
     private static let table: [LocKey: [AppLanguage: String]] = [
-        .settingsTitle: [.en: "SETTINGS", .id: "PENGATURAN"],
-        .sfx: [.en: "SFX", .id: "SFX"],
-        .music: [.en: "MUSIC", .id: "MUSIK"],
-        .language: [.en: "LANGUAGE", .id: "BAHASA"],
-        .microphone: [.en: "MICROPHONE", .id: "MIKROFON"],
-        .on: [.en: "ON", .id: "AKTIF"],
-        .off: [.en: "OFF", .id: "MATI"],
-        .day: [.en: "DAY", .id: "HARI"],
-        .ok: [.en: "OK", .id: "OK"],
-        .start: [.en: "START", .id: "MULAI"],
-        .yes: [.en: "YES", .id: "YA"],
-        .cancel: [.en: "CANCEL", .id: "BATAL"],
+        .settingsTitle: [.en: "SETTINGS", .id: "PENGATURAN", .es: "AJUSTES"],
+        .sfx: [.en: "SFX", .id: "SFX", .es: "SFX"],
+        .music: [.en: "MUSIC", .id: "MUSIK", .es: "MÚSICA"],
+        .language: [.en: "LANGUAGE", .id: "BAHASA", .es: "IDIOMA"],
+        .microphone: [.en: "MICROPHONE", .id: "MIKROFON", .es: "MICRÓFONO"],
+        .on: [.en: "ON", .id: "AKTIF", .es: "ENCENDIDO"],
+        .off: [.en: "OFF", .id: "MATI", .es: "APAGADO"],
+        .day: [.en: "DAY", .id: "HARI", .es: "DÍA"],
+        .ok: [.en: "OK", .id: "OK", .es: "OK"],
+        .start: [.en: "START", .id: "MULAI", .es: "EMPEZAR"],
+        .yes: [.en: "YES", .id: "YA", .es: "SÍ"],
+        .cancel: [.en: "CANCEL", .id: "BATAL", .es: "CANCELAR"],
         .homeConfirmMessage: [
             .en: "Are you sure you want to go back?",
-            .id: "Apakah kamu yakin ingin kembali?"
+            .id: "Apakah kamu yakin ingin kembali?",
+            .es: "¿Seguro que quieres volver?"
         ],
 
         .onboardingStep1: [
             .en: "rawr rawrrr rawrr (hi i'm raptor)",
-            .id: "rawr rawrrr rawrr (hai aku raptor)"
+            .id: "rawr rawrrr rawrr (hai aku raptor)",
+            .es: "rawr rawrrr rawrr (hola, soy raptor)"
         ],
         .onboardingStep2: [
             .en: "rawrr rawrr rawr rawrr (help me manage my laundry business)",
-            .id: "rawrr rawrr rawr rawrr (bantu aku mengelola bisnis cucian)"
+            .id: "rawrr rawrr rawr rawrr (bantu aku mengelola bisnis cucian)",
+            .es: "rawrr rawrr rawr rawrr (ayúdame a manejar mi lavandería)"
         ],
         .onboardingStep3: [
-            .en: "Rawrrrrrrrr (the customer will came, take their dirty clothes, wash it, dry it, and fold it)",
-            .id: "Rawrrrrrrrr (pelanggan akan datang, ambil baju kotor mereka, cuci, keringkan, dan lipat dengan rapi)"
+            .en: "Rawrrrrrrrr (when the customer comes, take their dirty clothes, wash it, dry it, and fold it)",
+            .id: "Rawrrrrrrrr (pelanggan akan datang, ambil baju kotor mereka, cuci, keringkan, dan lipat dengan rapi)",
+            .es: "Rawrrrrrrrr (cuando el cliente llegue, toma su ropa sucia, lávala, sécala y dóblala)"
         ],
 
         .tutorialFrontDeskDirtyClothes: [
             .en: "Customer came! Click the dirty clothes to proceed to washing",
-            .id: "Pelanggan datang! Tekan baju kotornya untuk lanjut mencuci"
+            .id: "Pelanggan datang! Tekan baju kotornya untuk lanjut mencuci",
+            .es: "¡Llegó un cliente! Toca la ropa sucia para pasar al lavado"
         ],
         .tutorialWashingBasket: [
             .en: "Drag the clothes from the basket onto the stone to wash them",
-            .id: "Geser baju dari keranjang ke batu untuk mencuci"
+            .id: "Geser baju dari keranjang ke batu untuk mencuci",
+            .es: "Arrastra la ropa de la canasta a la piedra para lavarla"
         ],
         .tutorialWashingSoap: [
             .en: "Pick and drag the right soap variant",
-            .id: "Pilih dan geser varian sabun yang tepat"
+            .id: "Pilih dan geser varian sabun yang tepat",
+            .es: "Elige y arrastra el jabón correcto"
         ],
         .tutorialWashingScrub: [
             .en: "Rub the clothes to wash them clean",
-            .id: "Usap baju untuk mencuci sampai bersih"
+            .id: "Usap baju untuk mencuci sampai bersih",
+            .es: "Talla la ropa para dejarla limpia"
         ],
         .tutorialWashingCleanBasket: [
             .en: "Put the clean clothes into the clean basket!",
-            .id: "Masukkan baju yang sudah bersih ke keranjang bersih!"
+            .id: "Masukkan baju yang sudah bersih ke keranjang bersih!",
+            .es: "¡Pon la ropa limpia en la canasta de limpios!"
         ],
         .tutorialWashingNextArrow: [
-            .en: "Tap the arrow to move to the next scene!",
-            .id: "Klik panah untuk berganti scene!"
+            .en: "Tap the arrow to move to the next phase!",
+            .id: "Klik panah untuk lanjut ke tahap berikutnya!",
+            .es: "¡Toca la flecha para ir a la siguiente etapa!"
         ],
         .tutorialDryingBasket: [
             .en: "Drag the clothes from the basket onto the line to dry them!",
-            .id: "Geser baju dari keranjang ke penjemuran untuk mengeringkan!"
+            .id: "Geser baju dari keranjang ke penjemuran untuk mengeringkan!",
+            .es: "¡Arrastra la ropa de la canasta al tendedero para secarla!"
         ],
         .tutorialDryingBlow: [
             .en: "Blow into the microphone to dry the clothes! Don't blow too hard",
-            .id: "Tiup dari microphone untuk mengeringkan baju! Jangan tiup terlalu keras"
+            .id: "Tiup dari microphone untuk mengeringkan baju! Jangan tiup terlalu keras",
+            .es: "¡Sopla en el micrófono para secar la ropa! No soples muy fuerte"
         ],
         .tutorialDryingLeafSwipe: [
-            .en: "Use the leaf to swipe and dry the clothes!",
-            .id: "Gunakan daun untuk geser dan mengeringkan!"
+            .en: "Fan the clothes with the leaf to dry them!",
+            .id: "Kibaskan daun untuk mengeringkan baju!",
+            .es: "¡Abanica la ropa con la hoja para secarla!"
         ],
         .tutorialDryingToBasket: [
             .en: "Drag the clothes from the line into the basket for the next step!",
-            .id: "Geser baju dari penjemuran ke keranjang untuk step berikutnya!"
+            .id: "Geser baju dari penjemuran ke keranjang untuk step berikutnya!",
+            .es: "¡Arrastra la ropa del tendedero a la canasta para el siguiente paso!"
         ],
         .tutorialFoldingBasket: [
             .en: "Drag the clothes from the basket onto the banana leaf to wrap them!",
-            .id: "Geser baju dari keranjang ke daun pisang untuk membungkus!"
+            .id: "Geser baju dari keranjang ke daun pisang untuk membungkus!",
+            .es: "¡Arrastra la ropa de la canasta a la hoja de plátano para envolverla!"
         ],
         .tutorialFoldingDirection: [
             .en: "Swipe to fold, following the arrow",
-            .id: "Lipat dengan geser sesuai tanda panah"
+            .id: "Lipat dengan geser sesuai tanda panah",
+            .es: "Para doblar, desliza siguiendo las flechas"
         ],
         .tutorialFoldingRope: [
             .en: "Use the rope to tie up the package",
-            .id: "Gunakan tali untuk membungkus"
+            .id: "Gunakan tali untuk membungkus",
+            .es: "Usa la cuerda para amarrar el paquete"
         ],
 
         .infoCustomer: [
             .en: "Press the sack to proceed to washing process",
-            .id: "Tekan karungnya untuk lanjut ke proses mencuci"
+            .id: "Tekan karungnya untuk lanjut ke proses mencuci",
+            .es: "Presiona la bolsa para pasar al proceso de lavado"
         ],
         .infoFolding: [
             .en: "Drag your finger based on the arrow direction",
-            .id: "Geser jarimu sesuai arah panah"
+            .id: "Geser jarimu sesuai arah panah",
+            .es: "Desliza tu dedo según la dirección de la flecha"
         ],
         .infoWashing: [
             .en: "Drag the clothes from the dirty piles and scrub it, then put in the clean piles",
-            .id: "Seret baju dari tumpukan kotor lalu gosok, kemudian taruh di tumpukan bersih"
+            .id: "Seret baju dari tumpukan kotor lalu gosok, kemudian taruh di tumpukan bersih",
+            .es: "Arrastra la ropa de la pila sucia, talla, y luego ponla en la pila limpia"
         ],
         .infoDryingMic: [
             .en: "Make the blow sound on your microphone, don't blow too hard",
-            .id: "Tiup ke mikrofonmu, jangan terlalu keras"
+            .id: "Tiup ke mikrofonmu, jangan terlalu keras",
+            .es: "Haz un sonido de soplido en tu micrófono, no soples muy fuerte"
         ],
         .infoDryingMicFootnote: [
             .en: "*you can turn off microphone feature on setting button",
-            .id: "*kamu bisa mematikan fitur mikrofon di tombol pengaturan"
+            .id: "*kamu bisa mematikan fitur mikrofon di tombol pengaturan",
+            .es: "*puedes apagar la función de micrófono en el botón de ajustes"
         ],
         .infoDryingLeaf: [
-            .en: "Swipe the leaf across the clothes to dry them",
-            .id: "Geser daunnya di atas baju untuk mengeringkannya"
+            .en: "Fan the leaf across the clothes to dry them",
+            .id: "Kibaskan daunnya di atas baju untuk mengeringkannya",
+            .es: "Abanica la ropa con la hoja para secarla"
         ],
         .infoDryingLeafFootnote: [
             .en: "*you can turn on microphone feature on setting button",
-            .id: "*kamu bisa menyalakan fitur mikrofon di tombol pengaturan"
+            .id: "*kamu bisa menyalakan fitur mikrofon di tombol pengaturan",
+            .es: "*puedes activar la función de micrófono en el botón de ajustes"
         ],
         .infoHandoff: [
             .en: "Drag the finished package to the customer",
-            .id: "Seret paket yang sudah jadi ke pelanggan"
+            .id: "Seret paket yang sudah jadi ke pelanggan",
+            .es: "Arrastra el paquete terminado hacia el cliente"
         ],
         .washingNoSoap: [
             .en: "Add some soap first!",
-            .id: "Tambahkan sabun dulu!"
+            .id: "Tambahkan sabun dulu!",
+            .es: "¡Primero agrega jabón!"
         ],
         .WashingWrongSoap: [
             .en: "Not the right fragance!",
-            .id: "Bukan itu pewanginya!"
+            .id: "Bukan itu pewanginya!",
+            .es: "¡Ese no es el aroma correcto!"
         ],
         .foldingHintNotWashed: [
             .en: "Wash the clothes first!",
-            .id: "Cuci dulu bajunya!"
+            .id: "Cuci dulu bajunya!",
+            .es: "¡Primero lava la ropa!"
         ],
         .foldingHintNotDried: [
             .en: "Dry the clothes first!",
-            .id: "Keringkan dulu bajunya!"
+            .id: "Keringkan dulu bajunya!",
+            .es: "¡Primero seca la ropa!"
         ],
         .foldingHintDragClothes: [
             .en: "Drag the clothes into the package!",
-            .id: "Seret bajunya ke dalam paket!"
+            .id: "Seret bajunya ke dalam paket!",
+            .es: "¡Arrastra la ropa dentro del paquete!"
         ],
         .foldingHintTieRope: [
             .en: "Now tie the package!",
-            .id: "Sekarang ikat paketnya!"
+            .id: "Sekarang ikat paketnya!",
+            .es: "Ahora, ¡Amarra el paquete!"
         ],
         .foldingHintDragClothesToCenter: [
             .en: "Drag the clothes to the center",
-            .id: "Seret bajunya ke tengah"
+            .id: "Seret bajunya ke tengah",
+            .es: "Arrastra la ropa al centro"
         ],
         .foldingHintSwipeToFold: [
             .en: "Swipe to fold the package!",
-            .id: "Geser untuk melipat paketnya!"
+            .id: "Geser untuk melipat paketnya!",
+            .es: "¡Desliza para doblar el paquete!"
         ],
         .foldingHintDragRopeToCenter: [
             .en: "Drag to the center",
-            .id: "Seret ke tengah"
+            .id: "Seret ke tengah",
+            .es: "Arrastra al centro"
         ],
         .foldingHintPackaged: [
             .en: "Packaged!",
-            .id: "Sudah dikemas!"
+            .id: "Sudah dikemas!",
+            .es: "¡Empacado!"
         ],
         .dryingHintSwipeLeaf: [
-            .en: "Swipe the leaf across the clothes to dry them.",
-            .id: "Geser daunnya di atas baju untuk mengeringkannya."
+            .en: "Fan the leaf across the clothes to dry them.",
+            .id: "Kibaskan daun di atas baju untuk mengeringkannya.",
+            .es: "Abanica la ropa con la hoja para secarla."
         ],
         .dryingHintMicPermission: [
             .en: "Microphone access is required to dry clothes — enable it in Settings.",
-            .id: "Akses mikrofon diperlukan untuk mengeringkan baju — aktifkan di Pengaturan."
+            .id: "Akses mikrofon diperlukan untuk mengeringkan baju — aktifkan di Pengaturan.",
+            .es: "Se necesita acceso al micrófono para secar la ropa. Actívalo en Ajustes."
         ],
         .dryingHintMicStartFailed: [
             .en: "Couldn't start the microphone.",
-            .id: "Mikrofon tidak bisa diaktifkan."
+            .id: "Mikrofon tidak bisa diaktifkan.",
+            .es: "No se pudo activar el micrófono."
         ],
         .washingHintClean: [
             .en: "Clean! Drag it to the basket!",
-            .id: "Bersih! Seret ke keranjang!"
+            .id: "Bersih! Seret ke keranjang!",
+            .es: "¡Implecable! ¡Arrástralo a la canasta!"
         ],
         .washingHintNiceClean: [
             .en: "Nice and clean!",
-            .id: "Bersih sekali!"
+            .id: "Bersih sekali!",
+            .es: "¡Como nuevo!"
         ],
 
-        .soapDisplayNameRose: [.en: "ROSE", .id: "MAWAR"],
-        .soapDisplayNameSoapFruit: [.en: "SOAPFRUIT", .id: "BUAH LERAK"],
-        .customerOrderQuickWait: [.en: "%@. QUICK. ME WAIT.", .id: "%@. CEPAT. SAYA TUNGGU."],
-        .customerOrderCleanGood: [.en: "%@. CLEAN GOOD.", .id: "%@. CUCI BERSIH."],
-        .customerOrderSmellRose: [.en: "ROSE. SMELL NICE.", .id: "MAWAR. HARUM."],
-        .customerOrderSmellSoapFruit: [.en: "SOAPFRUIT. SMELL FRESH.", .id: "BUAH LERAK. SEGAR."],
-        .customerOrderAnySoap: [.en: "WASH THESE. ANY SOAP OK.", .id: "CUCI INI. SABUN APA SAJA."],
+        // Customer order lines are written "caveman style" in EN on purpose
+        // (broken grammar, blunt). ES keeps that same clipped register.
+        .soapDisplayNameRose: [.en: "ROSE", .id: "MAWAR", .es: "ROSA"],
+        .soapDisplayNameSoapFruit: [.en: "SOAPFRUIT", .id: "BUAH LERAK", .es: "FRUTA JABÓN"],
+        .customerOrderQuickWait: [
+            .en: "%@. QUICK. ME WAIT.",
+            .id: "%@. CEPAT. SAYA TUNGGU.",
+            .es: "%@. RÁPIDO. YO ESPERAR."
+        ],
+        .customerOrderCleanGood: [
+            .en: "%@. CLEAN GOOD.",
+            .id: "%@. CUCI BERSIH.",
+            .es: "%@. LIMPIAR BIEN."
+        ],
+        .customerOrderSmellRose: [
+            .en: "ROSE. SMELL NICE.",
+            .id: "MAWAR. HARUM.",
+            .es: "ROSA. OLOR RICO."
+        ],
+        .customerOrderSmellSoapFruit: [
+            .en: "SOAPFRUIT. SMELL FRESH.",
+            .id: "BUAH LERAK. SEGAR.",
+            .es: "JABÓN FRUTA. OLOR FRESCO."
+        ],
+        .customerOrderAnySoap: [
+            .en: "WASH THESE. ANY SOAP OK.",
+            .id: "CUCI INI. SABUN APA SAJA.",
+            .es: "LAVAR. CUALQUIER JABÓN OK."
+        ],
 
-        .orderNoteTitle: [.en: "ORDER", .id: "PESANAN"],
-        .orderNoteSoap: [.en: "SOAP", .id: "SABUN"],
-        .orderNoteAnySoap: [.en: "ANY", .id: "BEBAS"],
-        .orderNoteClothes: [.en: "CLOTHES", .id: "BAJU"]
+        .orderNoteTitle: [.en: "ORDER", .id: "PESANAN", .es: "PEDIDO"],
+        .orderNoteSoap: [.en: "SOAP", .id: "SABUN", .es: "JABÓN"],
+        .orderNoteAnySoap: [.en: "ANY", .id: "BEBAS", .es: "CUALQUIERA"],
+        .orderNoteClothes: [.en: "CLOTHES", .id: "BAJU", .es: "ROPA"],
+        
+        // Handoff thank you lines
+        .handoffThankYouClean: [
+            .en: "CLEAN! ME HAPPY!",
+            .id: "BERSIH! AKU SENANG!",
+            .es: "¡LIMPIO! ¡YO, FELIZ!"
+        ],
+        .handoffThankYouFresh: [
+            .en: "SO FRESH! THANK YOU!",
+            .id: "SEGAR! TERIMA KASIH!",
+            .es: "¡FRESCO! ¡YO AGRADECER!"
+        ],
+        .handoffThankYouPay: [
+            .en: "GOOD JOB! ME PAY!",
+            .id: "KERJA BAGUS! AKU BAYAR!",
+            .es: "¡TRABAJO BUENO! ¡YO PAGAR!"
+        ],
+        .handoffThankYouSmell: [
+            .en: "SMELL NICE! TAKE COIN!",
+            .id: "WANGI! AMBIL KOIN!",
+            .es: "¡OLOR BUENO! ¡DAR MONEDA!"
+        ],
+        .startContinue: [.en: "CONTINUE", .id: "LANJUTKAN", .es: "CONTINUAR"],
+        .startMoreLevelsComingSoon: [
+            .en: "MORE LEVELS COMING SOON!",
+            .id: "LEVEL LEBIH BANYAK SEGERA HADIR!",
+            .es: "¡MÁS NIVELES PRÓXIMAMENTE!"
+        ],
+        .startNewGame: [
+            .en: "START NEW GAME",
+            .id: "MULAI PERMAINAN BARU",
+            .es: "EMPEZAR NUEVO JUEGO"
+        ],
+
+        .dryingAllDry: [.en: "All dry!", .id: "Semua sudah kering!", .es: "¡Todo seco!"],
+        .dryingTooHardFell: [
+            .en: "Too hard! It fell!",
+            .id: "Terlalu keras! Jatuh!",
+            .es: "¡Muy fuerte! ¡Se cayó!"
+        ],
+
+        .packagingSwipeToFoldLeaf: [
+            .en: "Swipe to fold the leaf!",
+            .id: "Geser untuk melipat daunnya!",
+            .es: "¡Desliza para doblar la hoja!"
+        ]
     ]
 
     static func t(_ key: LocKey) -> String {

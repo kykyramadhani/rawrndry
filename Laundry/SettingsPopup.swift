@@ -81,13 +81,10 @@ extension SKScene {
         addSliderRow(to: overlay, labelKey: .sfx, value: SettingsManager.shared.sfxVolume, y: rowY, center: center, controlName: "sfx")
         rowY -= rowSpacing
         addSliderRow(to: overlay, labelKey: .music, value: SettingsManager.shared.musicVolume, y: rowY, center: center, controlName: "music")
+        
         rowY -= rowSpacing
-        addToggleRow(
-            to: overlay, labelKey: .language,
-            leftText: "ENG", rightText: "IND",
-            isLeftActive: SettingsManager.shared.language == .en,
-            y: rowY, center: center, controlName: "language"
-        )
+        addLanguageToggleRow(to: overlay, y: rowY, center: center)
+        
         rowY -= rowSpacing
         addToggleRow(
             to: overlay, labelKey: .microphone,
@@ -171,6 +168,35 @@ extension SKScene {
         overlay.addChild(makeToggleButton(text: leftText, isActive: isLeftActive, position: CGPoint(x: center.x + 20, y: y), nodeName: "toggle-\(controlName)-left"))
         overlay.addChild(makeToggleButton(text: rightText, isActive: !isLeftActive, position: CGPoint(x: center.x + 20 + spacing, y: y), nodeName: "toggle-\(controlName)-right"))
     }
+    
+    private func addLanguageToggleRow(to overlay: SKNode, y: CGFloat, center: CGPoint) {
+        let label = SKLabelNode(fontNamed: AssetName.Font.comica)
+        label.text = Loc.t(.language)
+        label.fontSize = 18
+        label.fontColor = .white
+        label.horizontalAlignmentMode = .left
+        label.verticalAlignmentMode = .center
+        label.position = CGPoint(x: center.x - 195, y: y)
+        label.zPosition = 1
+        overlay.addChild(label)
+
+        let current = SettingsManager.shared.language
+        let buttonWidth: CGFloat = 66
+        let spacing: CGFloat = 70
+        let startX = center.x + 8
+
+        let engBtn = makeToggleButton(text: "ENG", isActive: current == .en, position: CGPoint(x: startX, y: y), nodeName: "toggle-language-en")
+        engBtn.size = CGSize(width: buttonWidth, height: 36)
+        overlay.addChild(engBtn)
+
+        let indBtn = makeToggleButton(text: "IND", isActive: current == .id, position: CGPoint(x: startX + spacing, y: y), nodeName: "toggle-language-id")
+        indBtn.size = CGSize(width: buttonWidth, height: 36)
+        overlay.addChild(indBtn)
+
+        let espBtn = makeToggleButton(text: "ESP", isActive: current == .es, position: CGPoint(x: startX + spacing * 2, y: y), nodeName: "toggle-language-es")
+        espBtn.size = CGSize(width: buttonWidth, height: 36)
+        overlay.addChild(espBtn)
+    }
 
     private func makeToggleButton(text: String, isActive: Bool, position: CGPoint, nodeName: String) -> SKSpriteNode {
         let button = SKSpriteNode(imageNamed: AssetName.UI.btnSecondary)
@@ -209,9 +235,10 @@ extension SKScene {
             onClose?()
             return true
         }
-
-        if name == "toggle-language-left" || name == "toggle-language-right" {
-            SettingsManager.shared.language = (name == "toggle-language-left") ? .en : .id
+        
+        if let name, name.hasPrefix("toggle-language-") {
+            let code = String(name.dropFirst("toggle-language-".count))
+            SettingsManager.shared.language = AppLanguage(rawValue: code) ?? .en
             showSettingsPopup()
             return true
         }

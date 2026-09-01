@@ -91,7 +91,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 2650;
-				LastUpgradeCheck = 2650;
+				LastUpgradeCheck = 2660;
 				TargetAttributes = {
 					21D138FC2FF395AA00BF99E1 = {
 						CreatedOnToolsVersion = 26.5;
@@ -143,9 +143,10 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = JLQK39AS23;
+				DEVELOPMENT_TEAM = 9VKHU98PLB;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Laundry/Info.plist;
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Laundry Day uses the microphone so you can blow on clothes to dry them.";
@@ -160,8 +161,9 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.Aulia.Rawrndry;
+				PRODUCT_BUNDLE_IDENTIFIER = com.Eunice.Rawrndry;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
@@ -177,9 +179,10 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = JLQK39AS23;
+				DEVELOPMENT_TEAM = 9VKHU98PLB;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Laundry/Info.plist;
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Laundry Day uses the microphone so you can blow on clothes to dry them.";
@@ -194,8 +197,9 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.Aulia.Rawrndry;
+				PRODUCT_BUNDLE_IDENTIFIER = com.Eunice.Rawrndry;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
@@ -265,6 +269,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
@@ -322,6 +327,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				VALIDATE_PRODUCT = YES;
 			};
