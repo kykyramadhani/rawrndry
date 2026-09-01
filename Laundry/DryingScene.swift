@@ -34,6 +34,7 @@ class DryingScene: SKScene {
     private var helpButton: SKSpriteNode!
     private var hintLabel: SKLabelNode!
     private var statusLabel: SKLabelNode!
+    private var blowBarNode: SKShapeNode!
     private var blowBarFill: SKShapeNode!
     private var blowPercentLabel: SKLabelNode!
 
@@ -95,8 +96,18 @@ class DryingScene: SKScene {
     private var leafNode: SKSpriteNode?
     private var isFanning = false
     private var lastFanPoint: CGPoint?
+    private var lastFanTimestamp: TimeInterval?
     private var fanAccumDistance: CGFloat = 0
     private let fanSwipeDistance: CGFloat = 40
+
+    /// Swipe speed (points/sec) above which the leaf is being fanned too hard — mirrors
+    /// overblowThreshold's role for the microphone, dropping the item the same way.
+    private let overSwipeSpeed: CGFloat = 1000
+    private var isOverswiping = false
+
+    /// How close the leaf must be to a hung, undried item's center for a swipe to count —
+    /// fanning far from the clothes no longer dries (or drops) anything.
+    private let leafDryingRange: CGFloat = 70
 
     /// Decorative rope-and-leaf-bundle prop shown next to the leaf tool — hides while the
     /// player is actively fanning, and never shows at all in microphone mode.
@@ -189,6 +200,8 @@ class DryingScene: SKScene {
         leafRopeNode = nil
         isFanning = false
         lastFanPoint = nil
+        lastFanTimestamp = nil
+        isOverswiping = false
         isOverblowing = false
     }
 
@@ -347,14 +360,21 @@ class DryingScene: SKScene {
         }
     }
 
-    /// Same look as the Settings popup's sliders (slideBase track + amber fill), minus the thumb —
-    /// this one's a read-only progress display, not a control.
+    /// Same look as the Settings popup's sliders (amber fill), minus the thumb — this one's a
+    /// read-only progress display, not a control. Unlike the slider track, the border here is a
+    /// rounded-rect shape (rather than the sharp-cornered slideBase image) so it matches the
+    /// fully-rounded pill shape of the fill. Hidden whenever nothing is currently hung to dry, so
+    /// finishing a dry makes the bar disappear instead of visibly resetting to 0%.
     private func addBlowBar() {
-        let bg = SKSpriteNode(imageNamed: AssetName.UI.slideBase)
-        bg.size = CGSize(width: blowBarWidth, height: blowBarHeight)
+        let bg = SKShapeNode(rectOf: CGSize(width: blowBarWidth, height: blowBarHeight), cornerRadius: blowBarHeight / 2)
+        bg.fillColor = SKColor(red: 1, green: 254 / 255, blue: 251 / 255, alpha: 1)
+        bg.strokeColor = .black
+        bg.lineWidth = 2
         bg.position = CGPoint(x: size.width / 2, y: size.height * 0.12)
         bg.zPosition = 10
+        bg.isHidden = true
         addChild(bg)
+        blowBarNode = bg
 
         let fill = SKShapeNode()
         fill.fillColor = .orange
@@ -376,10 +396,12 @@ class DryingScene: SKScene {
     }
 
     private func setBlowBarFillPath(fraction: CGFloat) {
-        let fillHeight = blowBarHeight - 6
-        let filledWidth = blowBarWidth * max(0, min(1, fraction))
+        let padding: CGFloat = 3
+        let fillHeight = blowBarHeight - padding * 2
+        let usableWidth = blowBarWidth - padding * 2
+        let filledWidth = usableWidth * max(0, min(1, fraction))
         blowBarFill.path = CGPath(
-            roundedRect: CGRect(x: -blowBarWidth / 2, y: -fillHeight / 2, width: filledWidth, height: fillHeight),
+            roundedRect: CGRect(x: -usableWidth / 2, y: -fillHeight / 2, width: filledWidth, height: fillHeight),
             cornerWidth: fillHeight / 2,
             cornerHeight: fillHeight / 2,
             transform: nil
@@ -611,6 +633,16 @@ class DryingScene: SKScene {
 
     // MARK: - Drying progress (advanced by either a mic blow or a leaf swipe)
 
+    /// Whether `location` is close enough to a still-drying hung item for the leaf to reach it.
+    private func isFanNearDryingItem(at location: CGPoint) -> Bool {
+        GameState.shared.itemProgress.indices.contains { index in
+            guard GameState.shared.itemProgress[index].isHungToDry,
+                  GameState.shared.itemProgress[index].dryProgress < 1,
+                  let node = itemNodes[index] else { return false }
+            return hypot(location.x - node.position.x, location.y - node.position.y) <= leafDryingRange
+        }
+    }
+
     private func advanceDrying() {
         let dryingIndices = GameState.shared.itemProgress.indices.filter {
             GameState.shared.itemProgress[$0].isHungToDry && GameState.shared.itemProgress[$0].dryProgress < 1
@@ -725,7 +757,13 @@ class DryingScene: SKScene {
     /// Bar reflects actual drying progress (average of all hung items) toward 100% — not raw mic volume.
     private func updateBlowBar() {
         let hungProgress = GameState.shared.itemProgress.filter { $0.isHungToDry }.map { $0.dryProgress }
-        let fraction = hungProgress.isEmpty ? 0 : hungProgress.reduce(0, +) / CGFloat(hungProgress.count)
+        guard !hungProgress.isEmpty else {
+            blowBarNode.isHidden = true
+            return
+        }
+
+        let fraction = hungProgress.reduce(0, +) / CGFloat(hungProgress.count)
+        blowBarNode.isHidden = fraction >= 1
         setBlowBarFillPath(fraction: fraction)
         blowPercentLabel.text = "\(Int(fraction * 100))%"
     }
@@ -802,7 +840,9 @@ class DryingScene: SKScene {
         if leafNode != nil {
             isFanning = true
             lastFanPoint = location
+            lastFanTimestamp = touch.timestamp
             fanAccumDistance = 0
+            isOverswiping = false
             leafNode?.position = location
             leafNode?.isHidden = false
             leafRopeNode?.isHidden = true
@@ -817,14 +857,33 @@ class DryingScene: SKScene {
 
         if isFanning {
             leafNode?.position = location
-            if let last = lastFanPoint {
-                fanAccumDistance += hypot(location.x - last.x, location.y - last.y)
+
+            if let last = lastFanPoint, let lastTimestamp = lastFanTimestamp {
+                let distance = hypot(location.x - last.x, location.y - last.y)
+                let dt = touch.timestamp - lastTimestamp
+                let speed = dt > 0 ? distance / CGFloat(dt) : 0
+
+                if !isFanNearDryingItem(at: location) {
+                    isOverswiping = false
+                    fanAccumDistance = 0
+                } else if speed > overSwipeSpeed {
+                    fanAccumDistance = 0
+                    if !isOverswiping {
+                        isOverswiping = true
+                        dropOverblownItems()
+                    }
+                } else {
+                    isOverswiping = false
+                    fanAccumDistance += distance
+                    if fanAccumDistance > fanSwipeDistance {
+                        fanAccumDistance = 0
+                        advanceDrying()
+                    }
+                }
             }
+
             lastFanPoint = location
-            if fanAccumDistance > fanSwipeDistance {
-                fanAccumDistance = 0
-                advanceDrying()
-            }
+            lastFanTimestamp = touch.timestamp
             return
         }
 
@@ -838,6 +897,8 @@ class DryingScene: SKScene {
         if isFanning {
             isFanning = false
             lastFanPoint = nil
+            lastFanTimestamp = nil
+            isOverswiping = false
             leafNode?.isHidden = true
             leafRopeNode?.isHidden = false
             return
@@ -853,6 +914,8 @@ class DryingScene: SKScene {
         if isFanning {
             isFanning = false
             lastFanPoint = nil
+            lastFanTimestamp = nil
+            isOverswiping = false
             leafNode?.isHidden = true
             leafRopeNode?.isHidden = false
             return
