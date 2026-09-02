@@ -21,6 +21,7 @@ enum LocKey: String {
     case start
     case yes
     case cancel
+    case reward
     case homeConfirmMessage
 
     // Onboarding, shown once before the player's very first day
@@ -118,6 +119,7 @@ enum Loc {
         .start: [.en: "START", .id: "MULAI", .es: "EMPEZAR"],
         .yes: [.en: "YES", .id: "YA", .es: "SÍ"],
         .cancel: [.en: "CANCEL", .id: "BATAL", .es: "CANCELAR"],
+        .reward: [.en: "REWARD", .id: "HADIAH", .es: "RECOMPENSA"],
         .homeConfirmMessage: [
             .en: "Are you sure you want to go back?",
             .id: "Apakah kamu yakin ingin kembali?",

@@ -318,7 +318,7 @@ class HandoffScene: SKScene {
         }
 
         let rewardLabel = SKLabelNode(fontNamed: AssetName.Font.comica)
-        rewardLabel.text = "REWARD"
+        rewardLabel.text = Loc.t(.reward)
         rewardLabel.fontSize = 28
         rewardLabel.fontColor = .white
         rewardLabel.verticalAlignmentMode = .center
