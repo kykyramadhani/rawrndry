@@ -92,7 +92,7 @@ enum LocKey: String {
     case handoffThankYouSmell
     
     // StartScene
-    case startContinue
+    case startContinueDay
     case startMoreLevelsComingSoon
     case startNewGame
 
@@ -125,7 +125,7 @@ enum Loc {
         ],
 
         .onboardingStep1: [
-            .en: "rawr rawrrr rawrr (hi i'm raptor)",
+            .en: "rawr rawrrr rawrr (hi I'm raptor)",
             .id: "rawr rawrrr rawrr (hai aku raptor)",
             .es: "rawr rawrrr rawrr (hola, soy raptor)"
         ],
@@ -378,7 +378,7 @@ enum Loc {
             .id: "WANGI! AMBIL KOIN!",
             .es: "¡OLOR BUENO! ¡DAR MONEDA!"
         ],
-        .startContinue: [.en: "CONTINUE", .id: "LANJUTKAN", .es: "CONTINUAR"],
+        .startContinueDay: [.en: "DAY %d", .id: "HARI %d", .es: "DÍA %d"],
         .startMoreLevelsComingSoon: [
             .en: "MORE LEVELS COMING SOON!",
             .id: "LEVEL LEBIH BANYAK SEGERA HADIR!",

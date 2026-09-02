@@ -36,7 +36,10 @@ class StartScene: SKScene {
         button.position = CGPoint(x: 0, y: -self.size.height * 0.3)
         button.zPosition = 1
 
-        let startLabel = SKLabelNode(text: GameState.shared.currentDay == 1 ? Loc.t(.start) : Loc.t(.startContinue))
+        let startText = GameState.shared.currentDay == 1
+            ? Loc.t(.start)
+            : String(format: Loc.t(.startContinueDay), GameState.shared.currentDay)
+        let startLabel = SKLabelNode(text: startText)
         startLabel.fontName = "ValdursansComicaNo1-Regular"
 
         startLabel.fontSize = 35

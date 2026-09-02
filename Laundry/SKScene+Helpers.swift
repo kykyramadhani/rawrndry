@@ -79,17 +79,19 @@ extension SKScene {
     }
 
     /// The polished Day + Gem badges shown top-left on every gameplay scene (sun icon badge,
-    /// gem icon badge, laid out left-to-right from `topLeftOrigin`).
+    /// gem icon badge, laid out left-to-right from `topLeftOrigin`). The day badge is taller
+    /// than the gem one to fit the front-of-house clock as a second line under "DAY N".
     @discardableResult
     func addCurrencyHUD(topLeftOrigin: CGPoint, day: Int, coins: Int) -> (day: SKSpriteNode, gem: SKSpriteNode) {
         let horizontalSpacing: CGFloat = 15
         var currentX = topLeftOrigin.x
 
         let dayHud = SKSpriteNode(imageNamed: AssetName.UI.hudIndicator)
+        dayHud.size = CGSize(width: dayHud.size.width * 1.3, height: dayHud.size.height)
         dayHud.position = CGPoint(x: currentX + dayHud.size.width / 2, y: topLeftOrigin.y)
         dayHud.zPosition = 100
         addChild(dayHud)
-        addHUDContent(to: dayHud, icon: AssetName.UI.sunIcon, text: "\(Loc.t(.day)) \(day)")
+        addDayClockHUDContent(to: dayHud, day: day)
 
         currentX += dayHud.size.width + horizontalSpacing
 
@@ -122,6 +124,48 @@ extension SKScene {
         content.position = CGPoint(x: -totalWidth / 2, y: 0)
         content.zPosition = 101
         hud.addChild(content)
+    }
+
+    /// Like `addHUDContent`, but for the day badge specifically: sun icon on the left, with
+    /// "DAY N" stacked above the live front-of-house clock on the right. The clock label
+    /// refreshes once a second for as long as `hud` stays in the active scene, reading
+    /// `GameState.shared.formattedShiftTime` fresh each tick — no per-scene wiring needed.
+    private func addDayClockHUDContent(to hud: SKSpriteNode, day: Int) {
+        let content = SKNode()
+        let iconNode = SKSpriteNode(imageNamed: AssetName.UI.sunIcon)
+        iconNode.position = .zero
+
+        let textX = iconNode.size.width / 2 + 10
+
+        let dayLabel = SKLabelNode(fontNamed: AssetName.Font.comica)
+        dayLabel.text = "\(Loc.t(.day)) \(day)"
+        dayLabel.fontSize = 10
+        dayLabel.fontColor = UIColor(red: 255.0/255.0, green: 247.0/255.0, blue: 234.0/255.0, alpha: 0.75)
+        dayLabel.verticalAlignmentMode = .center
+        dayLabel.horizontalAlignmentMode = .left
+        dayLabel.position = CGPoint(x: textX, y: 9)
+
+        let timeLabel = SKLabelNode(fontNamed: AssetName.Font.comica)
+        timeLabel.text = GameState.shared.formattedShiftTime
+        timeLabel.fontSize = 15
+        timeLabel.fontColor = .white
+        timeLabel.verticalAlignmentMode = .center
+        timeLabel.horizontalAlignmentMode = .left
+        timeLabel.position = CGPoint(x: textX, y: -7)
+
+        content.addChild(iconNode)
+        content.addChild(dayLabel)
+        content.addChild(timeLabel)
+
+        let totalWidth = textX + max(dayLabel.frame.width, timeLabel.frame.width)
+        content.position = CGPoint(x: -totalWidth / 2, y: 0)
+        content.zPosition = 101
+        hud.addChild(content)
+
+        hud.run(.repeatForever(.sequence([
+            .wait(forDuration: 1.0),
+            .run { timeLabel.text = GameState.shared.formattedShiftTime }
+        ])), withKey: "dayClockTick")
     }
 
     /// Scales the node down to 90% and back to its original size — the standard button-tap feedback.

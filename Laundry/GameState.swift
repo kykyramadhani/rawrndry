@@ -64,6 +64,46 @@ final class GameState {
     static let shared = GameState()
 
     var currentDay: Int = 1
+
+    /// Wall-clock time this day's shift began — drives the front-of-house 8AM–6PM clock.
+    /// Set once per day by `CustomerManager.generateCustomers(forDay:)`; nil before the
+    /// first day starts.
+    var dayStartTime: Date?
+
+    /// How long, in real seconds, a full 8AM–6PM shift takes to play out.
+    static let dayShiftRealDuration: TimeInterval = 3 * 60 + 30
+
+    private static let shiftOpenMinutes = 8 * 60   // 8:00 AM
+    private static let shiftCloseMinutes = 18 * 60 // 6:00 PM
+
+    /// Minutes-from-midnight the in-game clock currently shows, mapped from real elapsed
+    /// time since `dayStartTime` and clamped to closing time.
+    var currentShiftMinutes: Int {
+        guard let dayStartTime else { return Self.shiftOpenMinutes }
+        let elapsed = min(max(Date().timeIntervalSince(dayStartTime), 0), Self.dayShiftRealDuration)
+        let fraction = elapsed / Self.dayShiftRealDuration
+        let totalShiftMinutes = Self.shiftCloseMinutes - Self.shiftOpenMinutes
+        return Self.shiftOpenMinutes + Int(fraction * Double(totalShiftMinutes))
+    }
+
+    /// True once the in-game clock has reached 6:00 PM — no *new* customer should be handed
+    /// out past this point, though whichever order is already in progress still finishes
+    /// normally (see `HandoffScene.completeHandoff`).
+    var isPastClosingTime: Bool { currentShiftMinutes >= Self.shiftCloseMinutes }
+
+    /// "8:00 AM"–"6:00 PM"-style clock string, snapped down to the current half-hour (8:00,
+    /// 8:30, 9:00, ...) rather than showing an exact minute — reads like a clock face ticking
+    /// forward instead of a stopwatch.
+    var formattedShiftTime: String {
+        let totalMinutes = (currentShiftMinutes / 30) * 30
+        let hour24 = totalMinutes / 60
+        let minute = totalMinutes % 60
+        let isPM = hour24 >= 12
+        var hour12 = hour24 % 12
+        if hour12 == 0 { hour12 = 12 }
+        return String(format: "%d:%02d %@", hour12, minute, isPM ? "PM" : "AM")
+    }
+
     var score: Int = 0
     var coinsEarned: Int = 0
     var orderType: OrderType = .washOnly
@@ -175,6 +215,7 @@ final class GameState {
 
     func resetAll() {
         currentDay = 1
+        dayStartTime = nil
         score = 0
         coinsEarned = 0
         clothesCount = 1

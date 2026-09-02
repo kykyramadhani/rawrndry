@@ -22,6 +22,8 @@ class CustomerManager {
 
         guard let config = LevelDesign.config(forDay: day) else { return }
 
+        GameState.shared.dayStartTime = Date()
+
         let availableImages = [
             AssetName.Character.customer1,
             AssetName.Character.customer2,

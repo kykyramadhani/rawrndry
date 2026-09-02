@@ -121,7 +121,46 @@ class OnboardingScene: SKScene {
         actionLabel.text = Loc.t(step.buttonLabel)
         actionLabel.fontColor = isLast ? .white : .black
 
-        startTyping(Loc.t(step.text).uppercased())
+        startTyping(Loc.t(step.text))
+    }
+
+    /// Renders the raptor gibberish, shout-capped, in the comic font; from the first "(" onward,
+    /// the parenthetical translation renders in italic SF Pro Display, sentence-cased (only its
+    /// first letter capitalized) rather than force-uppercased — matches Loc's convention of
+    /// baking "gibberish (translation)" (translation stored lowercase) into one localized string.
+    private func attributedBubbleText(_ text: String) -> NSAttributedString {
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.alignment = .center
+
+        let gibberishFont = UIFont(name: AssetName.Font.comica, size: bubbleLabel.fontSize) ?? UIFont.systemFont(ofSize: bubbleLabel.fontSize)
+        let translationFont = UIFont.italicSystemFont(ofSize: 18)
+
+        var displayText: String
+        var translationRange: Range<String.Index>?
+
+        if let parenIndex = text.firstIndex(of: "(") {
+            let gibberish = text[..<parenIndex].uppercased()
+            var translation = String(text[parenIndex...])
+            if let firstLetterIndex = translation.firstIndex(where: { $0.isLetter }) {
+                translation.replaceSubrange(firstLetterIndex...firstLetterIndex, with: translation[firstLetterIndex...firstLetterIndex].uppercased())
+            }
+            displayText = gibberish + translation
+            translationRange = displayText.index(displayText.startIndex, offsetBy: gibberish.count)..<displayText.endIndex
+        } else {
+            displayText = text.uppercased()
+        }
+
+        let result = NSMutableAttributedString(string: displayText, attributes: [
+            .font: gibberishFont,
+            .foregroundColor: plainTextBrown,
+            .paragraphStyle: paragraphStyle
+        ])
+
+        if let translationRange {
+            result.addAttribute(.font, value: translationFont, range: NSRange(translationRange, in: displayText))
+        }
+
+        return result
     }
 
     // MARK: - Typewriter effect
@@ -134,6 +173,7 @@ class OnboardingScene: SKScene {
 
         currentFullText = text
         isTyping = true
+        bubbleLabel.attributedText = nil
         bubbleLabel.text = ""
         actionButton.alpha = 0
 
@@ -144,7 +184,7 @@ class OnboardingScene: SKScene {
             typeActions.append(.run { [weak self] in
                 guard let self else { return }
                 let endIndex = text.index(text.startIndex, offsetBy: count)
-                self.bubbleLabel.text = String(text[..<endIndex])
+                self.bubbleLabel.attributedText = self.attributedBubbleText(String(text[..<endIndex]))
             })
             typeActions.append(.wait(forDuration: secondsPerCharacter))
         }
@@ -162,7 +202,7 @@ class OnboardingScene: SKScene {
 
     private func finishTyping() {
         isTyping = false
-        bubbleLabel.text = currentFullText
+        bubbleLabel.attributedText = attributedBubbleText(currentFullText)
         stopRaptorWiggle()
         actionButton.run(.fadeIn(withDuration: 0.2))
     }

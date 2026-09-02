@@ -255,10 +255,12 @@ class HandoffScene: SKScene {
             .wait(forDuration: 1.0),
             .run { [weak self] in
                 guard let self else { return }
-                // The reward popup is the end-of-day summary, so only the day's last
-                // customer should trigger it — earlier handoffs move straight to the next
-                // customer.
-                if CustomerManager.shared.remainingCustomersForToday.isEmpty {
+                // The reward popup is the end-of-day summary — shown once the day's last
+                // customer is done, or once the 8AM–6PM shift clock has hit closing time
+                // (no *new* customer past 6PM, but whatever order was already in progress
+                // still gets to finish normally). Earlier handoffs move straight to the
+                // next customer.
+                if CustomerManager.shared.remainingCustomersForToday.isEmpty || GameState.shared.isPastClosingTime {
                     self.showRewardPopup()
                 } else {
                     self.goToNextCustomer()
