@@ -322,7 +322,7 @@ class HandoffScene: SKScene {
 
         // "DAY # REWARD"
         let dayRewardLabel = SKLabelNode(fontNamed: AssetName.Font.comica)
-        dayRewardLabel.text = "DAY \(GameState.shared.currentDay) REWARD" // TODO: localize
+        dayRewardLabel.text = Loc.t(.dayReward, GameState.shared.currentDay)
         dayRewardLabel.fontSize = 30
         dayRewardLabel.fontColor = plainTextColor
         dayRewardLabel.verticalAlignmentMode = .center
@@ -359,8 +359,8 @@ class HandoffScene: SKScene {
         }
         // TODO: replace with real data GameState.shared.mistakeLog, empty array should just skip the MISTAKES section entirely
         let mistakes: [MistakeEntry] = [
-            MistakeEntry(count: 2, label: "Wrong Fragrance", pointsLost: 200), // TODO: localize
-            MistakeEntry(count: 3, label: "Clothes Flew Away", pointsLost: 150) // TODO: localize
+            MistakeEntry(count: 2, label: Loc.t(.wrongFragrance), pointsLost: 200),
+            MistakeEntry(count: 3, label: Loc.t(.clothesFlewAway), pointsLost: 150)
         ]
 
         let clothesIcon = SKSpriteNode(imageNamed: "packagingFoldedClothes3")
@@ -370,7 +370,7 @@ class HandoffScene: SKScene {
         innerContentBg.addChild(clothesIcon)
 
         let clothesLabel = SKLabelNode(fontNamed: AssetName.Font.comica)
-        clothesLabel.text = "CLOTHES FINISHED" // TODO: localize
+        clothesLabel.text = Loc.t(.clothesFinished)
         clothesLabel.fontSize = 14
         clothesLabel.fontColor = plainTextBrown
         clothesLabel.horizontalAlignmentMode = .left
@@ -392,7 +392,7 @@ class HandoffScene: SKScene {
         cursorY -= (rowHeight + dividerGap)
 
         // Divider
-        let topDivider = SKSpriteNode(imageNamed: "rewardDivider") // TODO: replace image
+        let topDivider = SKSpriteNode(imageNamed: "rewardDivider")
         topDivider.size = CGSize(width: innerContentSize.width - sidePadding * 2, height: 2)
         topDivider.position = CGPoint(x: 0, y: cursorY)
         topDivider.zPosition = 1
@@ -402,7 +402,7 @@ class HandoffScene: SKScene {
 
         // Row: BASE INCOME
         let baseIncomeLabel = SKLabelNode(fontNamed: AssetName.Font.comica)
-        baseIncomeLabel.text = "BASE INCOME" // TODO: localize
+        baseIncomeLabel.text = Loc.t(.baseIncome)
         baseIncomeLabel.fontSize = 12
         baseIncomeLabel.fontColor = plainTextBrown
         baseIncomeLabel.horizontalAlignmentMode = .left
@@ -435,7 +435,7 @@ class HandoffScene: SKScene {
         // MISTAKES section
         
         let mistakesLabel = SKLabelNode(fontNamed: AssetName.Font.comica)
-        mistakesLabel.text = "MISTAKES" // TODO: localize
+        mistakesLabel.text = Loc.t(.mistakes)
         mistakesLabel.fontSize = 12
         mistakesLabel.fontColor = plainTextBrown
         mistakesLabel.horizontalAlignmentMode = .left
@@ -470,7 +470,7 @@ class HandoffScene: SKScene {
                 innerContentBg.addChild(nameLabel)
 
             let mistakeAmount = SKLabelNode(fontNamed: AssetName.Font.comica)
-            mistakeAmount.text = "-\(mistake.pointsLost)"
+            mistakeAmount.text = mistake.pointsLost > 0 ? "-\(mistake.pointsLost)" : "\(mistake.pointsLost)"
             mistakeAmount.fontSize = 14
             mistakeAmount.fontColor = plainTextBrown
             mistakeAmount.horizontalAlignmentMode = .right
@@ -496,7 +496,7 @@ class HandoffScene: SKScene {
 
         // Row: TOTAL INCOME + gem + amount
         let totalLabel = SKLabelNode(fontNamed: AssetName.Font.comica)
-        totalLabel.text = "TOTAL INCOME" // TODO: localize
+        totalLabel.text = Loc.t(.totalIncome)
         totalLabel.fontSize = 14
         totalLabel.fontColor = plainTextBrown
         totalLabel.horizontalAlignmentMode = .left
@@ -533,7 +533,7 @@ class HandoffScene: SKScene {
         panel.addChild(okButton)
 
         let okLabel = SKLabelNode(fontNamed: AssetName.Font.comica)
-        okLabel.text = "NEXT" // TODO: localize
+        okLabel.text = Loc.t(.next)
         fitLabelToButton(okLabel, maxWidth: okButton.size.width * 0.8, baseFontSize: 20)
         okLabel.fontColor = plainTextColor
         okLabel.verticalAlignmentMode = .center

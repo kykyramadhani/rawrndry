@@ -23,6 +23,7 @@ enum LocKey: String {
     case cancel
     case reward
     case homeConfirmMessage
+    case next
 
     // Onboarding, shown once before the player's very first day
     case onboardingStep1
@@ -103,6 +104,15 @@ enum LocKey: String {
 
     // PackagingScene
     case packagingSwipeToFoldLeaf
+    
+    //Reward
+    case dayReward
+    case clothesFinished
+    case baseIncome
+    case mistakes
+    case wrongFragrance
+    case clothesFlewAway
+    case totalIncome
 }
 
 enum Loc {
@@ -125,7 +135,11 @@ enum Loc {
             .id: "Apakah kamu yakin ingin kembali?",
             .es: "¿Seguro que quieres volver?"
         ],
-
+        .next: [
+            .en: "NEXT",
+            .id: "SELANJUTNYA",
+            .es: "SIGUIENTE"
+        ],
         .onboardingStep1: [
             .en: "rawr rawrrr rawrr (hi I'm raptor)",
             .id: "rawr rawrrr rawrr (hai aku raptor)",
@@ -403,10 +417,51 @@ enum Loc {
             .en: "Swipe to fold the leaf!",
             .id: "Geser untuk melipat daunnya!",
             .es: "¡Desliza para doblar la hoja!"
-        ]
+        ],
+        //Reward
+        .dayReward: [
+            .en: "DAY %d REWARD",
+            .id: "HADIAH HARI %d",
+            .es: "RECOMPENSA DÍA %d"
+        ],
+        .clothesFinished: [
+            .en: "CLOTHES FINISHED",
+            .id: "BAJU SELESAI",
+            .es: "PRENDAS TERMINADAS"
+        ],
+        .baseIncome: [
+            .en: "BASE INCOME",
+            .id: "PENDAPATAN DASAR",
+            .es: "INGRESO BASE"
+        ],
+        .mistakes: [
+            .en: "MISTAKES",
+            .id: "KESALAHAN",
+            .es: "ERRORES"
+        ],
+        .wrongFragrance: [
+            .en: "Wrong Fragrance",
+            .id: "Pewangi Salah",
+            .es: "Fragancia Equivocada"
+        ],
+        .clothesFlewAway: [
+            .en: "Clothes Flew Away",
+            .id: "Baju Terbang",
+            .es: "La Ropa Se Cayó"
+        ],
+        .totalIncome: [
+            .en: "TOTAL INCOME",
+            .id: "TOTAL PENDAPATAN",
+            .es: "INGRESO TOTAL"
+        ],
     ]
 
     static func t(_ key: LocKey) -> String {
         table[key]?[SettingsManager.shared.language] ?? key.rawValue.uppercased()
+    }
+    
+    static func t(_ key: LocKey, _ args: CVarArg...) -> String {
+        let format = table[key]?[SettingsManager.shared.language] ?? key.rawValue.uppercased()
+        return String(format: format, arguments: args)
     }
 }
