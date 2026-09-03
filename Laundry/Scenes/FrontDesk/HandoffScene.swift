@@ -532,6 +532,7 @@ class HandoffScene: SKScene {
             runButtonTapAnimation(on: okButton ?? overlay) { [weak self] in
                 guard let self else { return }
 
+                AudioManager.shared.playSFX("gem_earned")
                 // The reward popup only shows for the day's last customer (see
                 // completeHandoff), so tapping OK here always advances to the next day —
                 // StartScene continues into it (or shows "more levels coming soon" once the
