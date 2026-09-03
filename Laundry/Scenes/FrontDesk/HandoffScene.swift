@@ -249,6 +249,7 @@ class HandoffScene: SKScene {
         let popBounce = SKAction.scale(to: 0.95, duration: 0.1)
         bubbleContainer.run(.sequence([popUp, popBounce, SKAction.scale(to: 1.0, duration: 0.1)]))
 
+        // Calculate and accumulate order metrics into GameState daily totals
         calculateCoins()
 
         run(.sequence([
@@ -261,8 +262,13 @@ class HandoffScene: SKScene {
                 // still gets to finish normally). Earlier handoffs move straight to the
                 // next customer.
                 if CustomerManager.shared.remainingCustomersForToday.isEmpty || GameState.shared.isPastClosingTime {
+                    // NEW: End of Day, transfer daily net earnings to global score before showing popup
+                    GameState.shared.commitDailyEarnings()
+                    
                     self.showRewardPopup()
                 } else {
+                    // Continuation of day: clear current order and load next customer
+                    GameState.shared.completeCurrentOrder()
                     self.goToNextCustomer()
                 }
             }
@@ -277,17 +283,33 @@ class HandoffScene: SKScene {
     }
 
     private func calculateCoins() {
-        // The payout is fixed by the day's level design (see LevelDesign), not derived from
-        // clothes count here, so it can't drift from what the front desk quoted the player.
-        let base = GameState.shared.currentOrderReward
-        let deduction = GameState.shared.wrongSoapCount * 50
-        GameState.shared.coinsEarned = max(0, base - deduction)
+            let clothesCount = GameState.shared.clothesCount
+            let baseReward = GameState.shared.currentOrderReward
+            
+            let wrongSoap = GameState.shared.wrongSoapCount
+            let clothesFlown = GameState.shared.clothesFlownCount
+            let totalMistakes = wrongSoap + clothesFlown
 
-        if GameState.shared.wrongSoapCount == 0 {
-            GameCenterManager.shared.unlock(.flawlessOrder)
+            // NEW: Calculate penalties per mistake for this order using LevelDesign constants
+            let soapPenalty = wrongSoap * LevelDesign.penaltyWrongSoap
+            let flownPenalty = clothesFlown * LevelDesign.penaltyClothesFlown
+            let orderPenalty = soapPenalty + flownPenalty
+
+            // NEW: Accumulate into GameState daily totals instead of immediately adding to global score
+            GameState.shared.dailyClothesFinishedCount += clothesCount
+            GameState.shared.dailyBaseIncome += baseReward
+            GameState.shared.dailyWrongSoapCount += wrongSoap
+            GameState.shared.dailyClothesFlownCount += clothesFlown
+            GameState.shared.dailyPenaltyPoints += orderPenalty
+
+            // Game Center Achievements
+            if totalMistakes == 0 {
+                GameCenterManager.shared.unlock(.flawlessOrder)
+            }
+            
+            let netOrderEarned = max(0, baseReward - orderPenalty)
+            GameCenterManager.shared.advance(.rawrTycoon, by: Double(netOrderEarned))
         }
-        GameCenterManager.shared.advance(.rawrTycoon, by: Double(GameState.shared.coinsEarned))
-    }
 
     // MARK: - Reward popup
 
@@ -313,25 +335,21 @@ class HandoffScene: SKScene {
         let earned = starCount()
         let stoneOffsets: [CGFloat] = [-60, 0, 60]
         for (index, offsetX) in stoneOffsets.enumerated() {
-            let stone = SKSpriteNode(imageNamed: index < earned ? AssetName.UI.iconStoneOn : AssetName.UI.iconStoneOff)
+            let stoneImage = index < earned ? AssetName.UI.iconStoneOn : AssetName.UI.iconStoneOff
+            let stone = SKSpriteNode(imageNamed: stoneImage)
             stone.size = CGSize(width: 55, height: 55)
             stone.position = CGPoint(x: offsetX, y: panelSize.height / 2)
             stone.zPosition = 10
             panel.addChild(stone)
         }
 
-        // "DAY # REWARD"
-        let dayRewardLabel = SKLabelNode(fontNamed: AssetName.Font.comica)
-        dayRewardLabel.text = Loc.t(.dayReward, GameState.shared.currentDay)
-        dayRewardLabel.fontSize = 30
-        dayRewardLabel.fontColor = plainTextColor
-        dayRewardLabel.verticalAlignmentMode = .center
-        dayRewardLabel.horizontalAlignmentMode = .center
+        // Title: "DAY # REWARD"
+        let dayRewardLabel = createLabel(text: Loc.t(.dayReward, GameState.shared.currentDay), size: 30, color: plainTextColor, align: .center)
         dayRewardLabel.position = CGPoint(x: 0, y: panelSize.height * 0.33)
         dayRewardLabel.zPosition = 2
         panel.addChild(dayRewardLabel)
 
-        // content beige bg
+        // Beige background
         let innerContentBg = SKSpriteNode(imageNamed: "rewardContentBg")
         innerContentBg.size = innerContentSize
         innerContentBg.position = CGPoint(x: 0, y: -panelSize.height * 0.05)
@@ -348,133 +366,91 @@ class HandoffScene: SKScene {
         let leftX = -innerContentSize.width / 2 + sidePadding
         let rightX = innerContentSize.width / 2 - sidePadding
 
-        // TODO: replace with real data from GameState once per-day tracking exists
-        let clothesFinishedCount = 8 // TODO: replace with GameState.shared.clothesFinishedCount
-        let baseIncome = 1600 // TODO: replace with GameState.shared.baseIncome
-
-        struct MistakeEntry {
-            let count: Int
-            let label: String
-            let pointsLost: Int
-        }
-        // TODO: replace with real data GameState.shared.mistakeLog, empty array should just skip the MISTAKES section entirely
-        let mistakes: [MistakeEntry] = [
-            MistakeEntry(count: 2, label: Loc.t(.wrongFragrance), pointsLost: 200),
-            MistakeEntry(count: 3, label: Loc.t(.clothesFlewAway), pointsLost: 150)
-        ]
-
+        // 1. CLOTHES FINISHED
         let clothesIcon = SKSpriteNode(imageNamed: "packagingFoldedClothes3")
         clothesIcon.size = CGSize(width: 30, height: 22)
         clothesIcon.position = CGPoint(x: leftX + 15, y: cursorY - 4)
         clothesIcon.zPosition = 1
         innerContentBg.addChild(clothesIcon)
 
-        let clothesLabel = SKLabelNode(fontNamed: AssetName.Font.comica)
-        clothesLabel.text = Loc.t(.clothesFinished)
-        clothesLabel.fontSize = 14
-        clothesLabel.fontColor = plainTextBrown
-        clothesLabel.horizontalAlignmentMode = .left
-        clothesLabel.verticalAlignmentMode = .center
+        let clothesLabel = createLabel(text: Loc.t(.clothesFinished), size: 14)
         clothesLabel.position = CGPoint(x: leftX + 36, y: cursorY - 4)
         clothesLabel.zPosition = 1
         innerContentBg.addChild(clothesLabel)
 
-        let clothesCountLabel = SKLabelNode(fontNamed: AssetName.Font.comica)
-        clothesCountLabel.text = "\(clothesFinishedCount)"
-        clothesCountLabel.fontSize = 18
-        clothesCountLabel.fontColor = plainTextBrown
-        clothesCountLabel.horizontalAlignmentMode = .right
-        clothesCountLabel.verticalAlignmentMode = .center
+        let clothesCountLabel = createLabel(text: "\(GameState.shared.dailyClothesFinishedCount)", size: 18, align: .right)
         clothesCountLabel.position = CGPoint(x: rightX, y: cursorY - 4)
         clothesCountLabel.zPosition = 1
         innerContentBg.addChild(clothesCountLabel)
 
         cursorY -= (rowHeight + dividerGap)
-
-        // Divider
-        let topDivider = SKSpriteNode(imageNamed: "rewardDivider")
-        topDivider.size = CGSize(width: innerContentSize.width - sidePadding * 2, height: 2)
-        topDivider.position = CGPoint(x: 0, y: cursorY)
-        topDivider.zPosition = 1
-        innerContentBg.addChild(topDivider)
+        addDivider(to: innerContentBg, yPos: cursorY, width: innerContentSize.width - sidePadding * 2)
 
         cursorY -= (rowHeight * 0.4 + rowSpacing)
 
-        // Row: BASE INCOME
-        let baseIncomeLabel = SKLabelNode(fontNamed: AssetName.Font.comica)
-        baseIncomeLabel.text = Loc.t(.baseIncome)
-        baseIncomeLabel.fontSize = 12
-        baseIncomeLabel.fontColor = plainTextBrown
-        baseIncomeLabel.horizontalAlignmentMode = .left
-        baseIncomeLabel.verticalAlignmentMode = .center
+        // 2. BASE INCOME
+        let baseIncomeLabel = createLabel(text: Loc.t(.baseIncome), size: 12)
         baseIncomeLabel.position = CGPoint(x: leftX, y: cursorY)
         baseIncomeLabel.zPosition = 1
         innerContentBg.addChild(baseIncomeLabel)
 
-        let baseIncomeAmount = SKLabelNode(fontNamed: AssetName.Font.comica)
-        baseIncomeAmount.text = "\(baseIncome)"
-        baseIncomeAmount.fontSize = 18
-        baseIncomeAmount.fontColor = plainTextBrown
-        baseIncomeAmount.horizontalAlignmentMode = .right
-        baseIncomeAmount.verticalAlignmentMode = .center
+        let baseIncomeAmount = createLabel(text: "\(GameState.shared.dailyBaseIncome)", size: 18, align: .right)
         baseIncomeAmount.position = CGPoint(x: rightX, y: cursorY)
         baseIncomeAmount.zPosition = 1
         innerContentBg.addChild(baseIncomeAmount)
 
         cursorY -= (rowHeight * 0.5 + rowSpacing)
-
-        //divider
-        let midDivider = SKSpriteNode(imageNamed: "rewardDivider")
-        midDivider.size = CGSize(width: innerContentSize.width - sidePadding * 2, height: 2)
-        midDivider.position = CGPoint(x: 0, y: cursorY)
-        midDivider.zPosition = 1
-        innerContentBg.addChild(midDivider)
+        addDivider(to: innerContentBg, yPos: cursorY, width: innerContentSize.width - sidePadding * 2)
 
         cursorY -= (rowHeight * 0.6 + rowSpacing)
-        
-        // MISTAKES section
-        
-        let mistakesLabel = SKLabelNode(fontNamed: AssetName.Font.comica)
-        mistakesLabel.text = Loc.t(.mistakes)
-        mistakesLabel.fontSize = 12
-        mistakesLabel.fontColor = plainTextBrown
-        mistakesLabel.horizontalAlignmentMode = .left
-        mistakesLabel.verticalAlignmentMode = .center
+
+        // 3. MISTAKES SECTION
+        let mistakesLabel = createLabel(text: Loc.t(.mistakes), size: 12)
         mistakesLabel.position = CGPoint(x: leftX, y: cursorY)
         mistakesLabel.zPosition = 1
         innerContentBg.addChild(mistakesLabel)
 
         cursorY -= (rowHeight * 0.8 + rowSpacing * 0.5)
 
-        let mistakeCountColor = UIColor(red: 173.0/255.0, green: 77.0/255.0, blue: 54.0/255.0, alpha: 1.0) // AD4D36
-        
+        struct MistakeEntry {
+            let count: Int
+            let label: String
+            let pointsLost: Int
+        }
+
+        let mistakes: [MistakeEntry] = [
+            MistakeEntry(
+                count: GameState.shared.dailyWrongSoapCount,
+                label: Loc.t(.wrongFragrance),
+                pointsLost: GameState.shared.dailyWrongSoapLoss
+            ),
+            MistakeEntry(
+                count: GameState.shared.dailyClothesFlownCount,
+                label: Loc.t(.clothesFlewAway),
+                pointsLost: GameState.shared.dailyClothesFlownLoss
+            )
+        ]
+
+        let mistakeCountColor = UIColor(red: 173.0/255.0, green: 77.0/255.0, blue: 54.0/255.0, alpha: 1.0)
+
         for mistake in mistakes {
-            let countLabel = SKLabelNode(fontNamed: AssetName.Font.comica)
-                countLabel.text = "\(mistake.count)X"
-                countLabel.fontSize = 12
-                countLabel.fontColor = mistakeCountColor
-                countLabel.horizontalAlignmentMode = .left
-                countLabel.verticalAlignmentMode = .center
-                countLabel.position = CGPoint(x: leftX, y: cursorY)
-                countLabel.zPosition = 1
-                innerContentBg.addChild(countLabel)
+            let countLabel = createLabel(text: "\(mistake.count)X", size: 12, color: mistakeCountColor)
+            countLabel.position = CGPoint(x: leftX, y: cursorY)
+            countLabel.zPosition = 1
+            innerContentBg.addChild(countLabel)
 
-                let nameLabel = SKLabelNode(fontNamed: roundedSystemFontName(size: 10))
-                nameLabel.text = mistake.label // TODO: localize
-                nameLabel.fontSize = 10
-                nameLabel.fontColor = plainTextBrown
-                nameLabel.horizontalAlignmentMode = .left
-                nameLabel.verticalAlignmentMode = .center
-                nameLabel.position = CGPoint(x: leftX + countLabel.frame.width + 4, y: cursorY)
-                nameLabel.zPosition = 1
-                innerContentBg.addChild(nameLabel)
+            let nameLabel = SKLabelNode(fontNamed: roundedSystemFontName(size: 10))
+            nameLabel.text = mistake.label
+            nameLabel.fontSize = 10
+            nameLabel.fontColor = plainTextBrown
+            nameLabel.horizontalAlignmentMode = .left
+            nameLabel.verticalAlignmentMode = .center
+            nameLabel.position = CGPoint(x: leftX + countLabel.frame.width + 4, y: cursorY)
+            nameLabel.zPosition = 1
+            innerContentBg.addChild(nameLabel)
 
-            let mistakeAmount = SKLabelNode(fontNamed: AssetName.Font.comica)
-            mistakeAmount.text = mistake.pointsLost > 0 ? "-\(mistake.pointsLost)" : "\(mistake.pointsLost)"
-            mistakeAmount.fontSize = 14
-            mistakeAmount.fontColor = plainTextBrown
-            mistakeAmount.horizontalAlignmentMode = .right
-            mistakeAmount.verticalAlignmentMode = .center
+            let mistakeText = mistake.pointsLost > 0 ? "-\(mistake.pointsLost)" : "0"
+            let mistakeAmount = createLabel(text: mistakeText, size: 14, align: .right)
             mistakeAmount.position = CGPoint(x: rightX, y: cursorY)
             mistakeAmount.zPosition = 1
             innerContentBg.addChild(mistakeAmount)
@@ -483,24 +459,12 @@ class HandoffScene: SKScene {
         }
 
         cursorY -= (dividerGap - rowSpacing * 0.5)
-        
-
-        // Divider before total
-        let bottomDivider = SKSpriteNode(imageNamed: "rewardDivider")
-        bottomDivider.size = CGSize(width: innerContentSize.width - sidePadding * 2, height: 2)
-        bottomDivider.position = CGPoint(x: 0, y: cursorY)
-        bottomDivider.zPosition = 1
-        innerContentBg.addChild(bottomDivider)
+        addDivider(to: innerContentBg, yPos: cursorY, width: innerContentSize.width - sidePadding * 2)
 
         cursorY -= (rowHeight * 0.6 + rowSpacing)
 
-        // Row: TOTAL INCOME + gem + amount
-        let totalLabel = SKLabelNode(fontNamed: AssetName.Font.comica)
-        totalLabel.text = Loc.t(.totalIncome)
-        totalLabel.fontSize = 14
-        totalLabel.fontColor = plainTextBrown
-        totalLabel.horizontalAlignmentMode = .left
-        totalLabel.verticalAlignmentMode = .center
+        // 4. TOTAL INCOME
+        let totalLabel = createLabel(text: Loc.t(.totalIncome), size: 14)
         totalLabel.position = CGPoint(x: leftX, y: cursorY)
         totalLabel.zPosition = 1
         innerContentBg.addChild(totalLabel)
@@ -509,22 +473,17 @@ class HandoffScene: SKScene {
         gemIcon.size = CGSize(width: 20, height: 20)
         gemIcon.zPosition = 1
 
-        let totalAmountLabel = SKLabelNode(fontNamed: AssetName.Font.comica)
-        totalAmountLabel.text = formattedCoins(GameState.shared.coinsEarned)
-        totalAmountLabel.fontSize = 20
-        totalAmountLabel.fontColor = plainTextBrown
-        totalAmountLabel.verticalAlignmentMode = .center
-        totalAmountLabel.horizontalAlignmentMode = .right
+        let totalAmountLabel = createLabel(text: formattedCoins(GameState.shared.dailyNetEarned), size: 20, align: .right)
+        totalAmountLabel.position = CGPoint(x: rightX, y: cursorY)
         totalAmountLabel.zPosition = 1
 
         let gemLabelSpacing: CGFloat = 6
-        totalAmountLabel.position = CGPoint(x: rightX, y: cursorY)
         gemIcon.position = CGPoint(x: rightX - totalAmountLabel.frame.width - gemLabelSpacing - gemIcon.size.width / 2, y: cursorY)
 
         innerContentBg.addChild(gemIcon)
         innerContentBg.addChild(totalAmountLabel)
 
-        // NEXT button
+        // OK Button
         let okButton = SKSpriteNode(imageNamed: "main-button")
         okButton.name = "rewardOk"
         okButton.size = CGSize(width: 93, height: 38)
@@ -532,13 +491,29 @@ class HandoffScene: SKScene {
         okButton.zPosition = 1
         panel.addChild(okButton)
 
-        let okLabel = SKLabelNode(fontNamed: AssetName.Font.comica)
-        okLabel.text = Loc.t(.next)
+        let okLabel = createLabel(text: Loc.t(.next), size: 20, color: plainTextColor, align: .center)
         fitLabelToButton(okLabel, maxWidth: okButton.size.width * 0.8, baseFontSize: 20)
-        okLabel.fontColor = plainTextColor
-        okLabel.verticalAlignmentMode = .center
         okLabel.zPosition = 1
         okButton.addChild(okLabel)
+    }
+
+    // MARK: - Helpers
+    private func createLabel(text: String, size: CGFloat, color: UIColor? = nil, align: SKLabelHorizontalAlignmentMode = .left) -> SKLabelNode {
+        let label = SKLabelNode(fontNamed: AssetName.Font.comica)
+        label.text = text
+        label.fontSize = size
+        label.fontColor = color ?? plainTextBrown
+        label.horizontalAlignmentMode = align
+        label.verticalAlignmentMode = .center
+        return label
+    }
+
+    private func addDivider(to parent: SKNode, yPos: CGFloat, width: CGFloat) {
+        let divider = SKSpriteNode(imageNamed: "rewardDivider")
+        divider.size = CGSize(width: width, height: 2)
+        divider.position = CGPoint(x: 0, y: yPos)
+        divider.zPosition = 1
+        parent.addChild(divider)
     }
 
     //helper to adjust text
@@ -553,11 +528,9 @@ class HandoffScene: SKScene {
     private func handleRewardPopupTap(at location: CGPoint) -> Bool {
         guard let overlay = childNode(withName: "rewardPopupOverlay") else { return false }
         if tappedNodeName(at: location) == "rewardOk" {
-            let okButton = overlay.childNode(withName: "rewardOk")
+            let okButton = overlay.childNode(withName: "//rewardOk")
             runButtonTapAnimation(on: okButton ?? overlay) { [weak self] in
                 guard let self else { return }
-                GameState.shared.score += GameState.shared.coinsEarned
-                GameState.shared.coinsEarned = 0
 
                 // The reward popup only shows for the day's last customer (see
                 // completeHandoff), so tapping OK here always advances to the next day —
@@ -575,13 +548,16 @@ class HandoffScene: SKScene {
         return true
     }
 
-    /// Percentage of the maximum possible payout this order could have earned, minus tears.
+    /// Percentage of the maximum possible payout this day could have earned, minus tears.
     private func starCount() -> Int {
-        let maxPossible = max(GameState.shared.currentOrderReward, 1)
-        let percentage = CGFloat(GameState.shared.coinsEarned) / CGFloat(maxPossible) * 100
+        //max income possible
+        let maxPossible = max(GameState.shared.dailyBaseIncome, 1)
+        
+        //considering penalties
+        let percentage = CGFloat(GameState.shared.dailyNetEarned) / CGFloat(maxPossible) * 100.0
 
-        if percentage >= 80 { return 3 }
-        if percentage >= 40 { return 2 }
+        if percentage >= 90 { return 3 }
+        if percentage >= 45 { return 2 }
         return 1
     }
 

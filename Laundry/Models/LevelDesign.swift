@@ -11,33 +11,39 @@ import Foundation
 struct DayLevelConfig {
     struct CustomerConfig {
         let clothesCount: Int
-        let reward: Int
+        
+        var reward: Int {
+            return clothesCount * LevelDesign.piecePrice
+        }
     }
 
     let customers: [CustomerConfig]
 }
 
 enum LevelDesign {
+    static let piecePrice: Int = 200
+    static let penaltyWrongSoap: Int = 50
+    static let penaltyClothesFlown: Int = 25 //NOTE: change if needed to dynamic calc
 
     static let days: [DayLevelConfig] = [
         // Day 1
         DayLevelConfig(customers: [
-            .init(clothesCount: 2, reward: 400),
-            .init(clothesCount: 2, reward: 400)
+            .init(clothesCount: 2), //400
+            .init(clothesCount: 2)  //400
         ]),
         // Day 2
         DayLevelConfig(customers: [
-            .init(clothesCount: 3, reward: 600),
-            .init(clothesCount: 1, reward: 200),
-            .init(clothesCount: 3, reward: 600)
+            .init(clothesCount: 3), //600
+            .init(clothesCount: 1), //200
+            .init(clothesCount: 3) //600
         ]),
         // Day 3
         DayLevelConfig(customers: [
-            .init(clothesCount: 1, reward: 200),
-            .init(clothesCount: 2, reward: 400),
-            .init(clothesCount: 2, reward: 400),
-            .init(clothesCount: 3, reward: 600),
-            .init(clothesCount: 3, reward: 600)
+            .init(clothesCount: 1), //200
+            .init(clothesCount: 2), //400
+            .init(clothesCount: 2), //400
+            .init(clothesCount: 3), //600
+            .init(clothesCount: 3)  //600
         ])
     ]
 
