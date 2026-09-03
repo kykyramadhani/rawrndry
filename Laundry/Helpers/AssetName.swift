@@ -1,4 +1,4 @@
-import Foundation
+import UIKit
 
 enum AssetName {
 
@@ -27,6 +27,20 @@ enum AssetName {
         static let btnSecondary = "btnSecondary"
         static let slider = "slider"
         static let slideBase = "slideBase"
+
+        /// Buttons whose label is drawn into the artwork, so they need one image per
+        /// language. Returns nil while none of that art exists yet, which tells the caller
+        /// to fall back to plain button art with a text label — so dropping in
+        /// `shopButton_id`, `buyButton_es` and friends later is all it takes to switch over.
+        static func localizedButtonImage(_ base: String, language: AppLanguage) -> String? {
+            for name in ["\(base)_\(language.rawValue)", "\(base)_en"] where UIImage(named: name) != nil {
+                return name
+            }
+            return nil
+        }
+
+        static let shopButtonBase = "shopButton"
+        static let buyButtonBase = "buyButton"
 
         /// The order slip has its heading drawn into the art, so there is one per language,
         /// named by the same code `AppLanguage` uses.
@@ -86,6 +100,15 @@ enum AssetName {
         }
     }
     
+    enum Shop {
+        static let slot = "shopSlot"
+        static let slotActive = "shopSlotActive"
+        static let descriptionCard = "shopDescriptionCard"
+        static let descriptionEmpty = "shopDescriptionEmpty"
+        static let itemAddTime = "shopItemAddTime"
+        static let itemGemMultiplier = "shopItemGemMultiplier"
+    }
+
     enum Font {
         static let comica = "ValdursansComicaNo1-Regular"
     }

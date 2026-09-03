@@ -281,7 +281,7 @@ class HandoffScene: SKScene {
         // clothes count here, so it can't drift from what the front desk quoted the player.
         let base = GameState.shared.currentOrderReward
         let deduction = GameState.shared.wrongSoapCount * 50
-        GameState.shared.coinsEarned = max(0, base - deduction)
+        GameState.shared.coinsEarned = max(0, base - deduction) * GameState.shared.gemMultiplier
 
         if GameState.shared.wrongSoapCount == 0 {
             GameCenterManager.shared.unlock(.flawlessOrder)
@@ -381,6 +381,7 @@ class HandoffScene: SKScene {
                 if self.starCount() == 3 { GameCenterManager.shared.unlock(.threeStarDay) }
 
                 GameState.shared.currentDay += 1
+                GameState.shared.clearDailyBoosts()
                 if GameState.shared.currentDay > LevelDesign.days.count {
                     GameCenterManager.shared.unlock(.fullCycle)
                 }

@@ -70,8 +70,30 @@ final class GameState {
     /// first day starts.
     var dayStartTime: Date?
 
-    /// How long, in real seconds, a full 8AM–6PM shift takes to play out.
-    static let dayShiftRealDuration: TimeInterval = 3 * 60 + 30
+    /// How long, in real seconds, a full 8AM–6PM shift takes to play out before any shop
+    /// boost. The clock always runs 8AM to 6PM — buying time makes those hours pass more
+    /// slowly in real terms, which is what lets more customers through the door.
+    static let baseDayShiftRealDuration: TimeInterval = 3 * 60 + 30
+
+    /// Real seconds added to today's shift by the shop's "add more time" boost.
+    var extraShiftDuration: TimeInterval = 0
+
+    /// What every payout is multiplied by today — 2 while the shop's gem multiplier is active.
+    var gemMultiplier: Int = 1
+
+    /// Which shop items are active for today, so the shop can show them as bought and refuse
+    /// to sell the same boost twice.
+    var activeBoosts: Set<String> = []
+
+    var dayShiftRealDuration: TimeInterval { Self.baseDayShiftRealDuration + extraShiftDuration }
+
+    /// Drops the boosts bought for the day that just ended. Called when the day rolls over,
+    /// so a boost never carries into a day it wasn't paid for.
+    func clearDailyBoosts() {
+        extraShiftDuration = 0
+        gemMultiplier = 1
+        activeBoosts = []
+    }
 
     private static let shiftOpenMinutes = 8 * 60   // 8:00 AM
     private static let shiftCloseMinutes = 18 * 60 // 6:00 PM
@@ -80,8 +102,8 @@ final class GameState {
     /// time since `dayStartTime` and clamped to closing time.
     var currentShiftMinutes: Int {
         guard let dayStartTime else { return Self.shiftOpenMinutes }
-        let elapsed = min(max(Date().timeIntervalSince(dayStartTime), 0), Self.dayShiftRealDuration)
-        let fraction = elapsed / Self.dayShiftRealDuration
+        let elapsed = min(max(Date().timeIntervalSince(dayStartTime), 0), dayShiftRealDuration)
+        let fraction = elapsed / dayShiftRealDuration
         let totalShiftMinutes = Self.shiftCloseMinutes - Self.shiftOpenMinutes
         return Self.shiftOpenMinutes + Int(fraction * Double(totalShiftMinutes))
     }
@@ -216,6 +238,7 @@ final class GameState {
     func resetAll() {
         currentDay = 1
         dayStartTime = nil
+        clearDailyBoosts()
         score = 0
         coinsEarned = 0
         clothesCount = 1

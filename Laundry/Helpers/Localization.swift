@@ -84,6 +84,18 @@ enum LocKey: String {
     case orderNoteSoap
     case orderNoteAnySoap
     case orderNoteClothes
+
+    // Shop
+    case shopTitle
+    case shopSelectPrompt
+    case shopBuy
+    case shopNotEnoughGems
+    case shopAlreadyActive
+    case shopActiveToday
+    case shopItemAddTimeName
+    case shopItemAddTimeDesc
+    case shopItemGemMultiplierName
+    case shopItemGemMultiplierDesc
     
     // Handoff thank you lines, spoken once the package is handed to the customer
     case handoffThankYouClean
@@ -356,6 +368,45 @@ enum Loc {
         .orderNoteSoap: [.en: "SOAP", .id: "SABUN", .es: "JABÓN"],
         .orderNoteAnySoap: [.en: "ANY", .id: "BEBAS", .es: "CUALQUIERA"],
         .orderNoteClothes: [.en: "CLOTHES", .id: "BAJU", .es: "ROPA"],
+
+        .shopTitle: [.en: "SHOP", .id: "TOKO", .es: "TIENDA"],
+        .shopSelectPrompt: [
+            .en: "SELECT AN ITEM\nTO SEE THE DESCRIPTION",
+            .id: "PILIH SATU BARANG\nUNTUK MELIHAT KETERANGAN",
+            .es: "ELIGE UN ARTÍCULO\nPARA VER LA DESCRIPCIÓN"
+        ],
+        .shopBuy: [.en: "BUY", .id: "BELI", .es: "COMPRAR"],
+        .shopNotEnoughGems: [
+            .en: "Not enough gems!",
+            .id: "Gem tidak cukup!",
+            .es: "¡Gemas insuficientes!"
+        ],
+        .shopAlreadyActive: [
+            .en: "Already active for today!",
+            .id: "Sudah aktif untuk hari ini!",
+            .es: "¡Ya está activo hoy!"
+        ],
+        .shopActiveToday: [.en: "ACTIVE TODAY", .id: "AKTIF HARI INI", .es: "ACTIVO HOY"],
+        .shopItemAddTimeName: [
+            .en: "ADD MORE TIME",
+            .id: "TAMBAH WAKTU",
+            .es: "MÁS TIEMPO"
+        ],
+        .shopItemAddTimeDesc: [
+            .en: "MORE TIME, MORE CUSTOMER! GET EXTRA TIME AND GEMS ON THE DAY.",
+            .id: "LEBIH BANYAK WAKTU, LEBIH BANYAK PELANGGAN! DAPAT WAKTU DAN GEM TAMBAHAN HARI ITU.",
+            .es: "¡MÁS TIEMPO, MÁS CLIENTES! CONSIGUE TIEMPO Y GEMAS EXTRA EN EL DÍA."
+        ],
+        .shopItemGemMultiplierName: [
+            .en: "GEM MULTIPLIER",
+            .id: "PENGGANDA GEM",
+            .es: "MULTIPLICADOR"
+        ],
+        .shopItemGemMultiplierDesc: [
+            .en: "BOOST YOUR INCOME, EARN 2x MORE GEMS FROM EVERY CUSTOMER OF THE DAY.",
+            .id: "TINGKATKAN PENDAPATANMU, DAPAT 2x LEBIH BANYAK GEM DARI SETIAP PELANGGAN HARI ITU.",
+            .es: "AUMENTA TUS INGRESOS, GANA 2x MÁS GEMAS DE CADA CLIENTE DEL DÍA."
+        ],
         
         // Handoff thank you lines
         .handoffThankYouClean: [

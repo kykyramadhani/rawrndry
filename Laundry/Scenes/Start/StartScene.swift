@@ -16,6 +16,7 @@ class StartScene: SKScene {
             setupComingSoon()
         }
         addSettingsButton()
+        addShopButton(at: CGPoint(x: -size.width * 0.40, y: size.height * 0.40))
 
         AudioManager.shared.stopRiverAmbience()
         AudioManager.shared.playThemeBGM()
@@ -89,7 +90,9 @@ class StartScene: SKScene {
         let location = touch.location(in: self)
 
         if handleSettingsPopupTouchesBegan(at: location) { return }
+        if handleShopPopupTap(at: location) { return }
         if handleSettingsButtonTap(nodeName: tappedNodeName(at: location)) { return }
+        if handleShopButtonTap(nodeName: tappedNodeName(at: location)) { return }
 
         let nodes = self.nodes(at: location)
 
