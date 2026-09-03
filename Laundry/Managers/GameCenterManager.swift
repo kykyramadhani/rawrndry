@@ -14,28 +14,33 @@ import GameKit
 /// descriptions live there, not here — this is only the identifier + how far you have to get.
 enum Achievement: String, CaseIterable {
 
-    /// Wash your very first item.
+    /// "First Rinse" — take a dirty item from the basket, scrub it clean at the river, and
+    /// drop it in the clean basket.
     case firstWash = "com.Aulia.Rawrndry.firstWash"
-    /// Hand back an order without ever reaching for the wrong fragrance.
+    /// "Flawless Order" — finish a customer's whole order without ever reaching for the
+    /// wrong fragrance.
     case flawlessOrder = "com.Aulia.Rawrndry.flawlessOrder"
-    /// End a day on a three-star order.
+    /// "Three-Star Day" — close out a day with a three-star order at the front desk.
     case threeStarDay = "com.Aulia.Rawrndry.threeStarDay"
-    /// Apply the fragrance the customer actually asked for, 50 times.
+    /// "Soap Sommelier" — apply the exact fragrance a customer asked for, 20 times. Orders
+    /// with no preference don't count.
     case soapSommelier = "com.Aulia.Rawrndry.soapSommelier"
-    /// Scrub a marathon's worth of clothes.
+    /// "Elbow Grease" — scrub through a full run of the laundry, around twenty items by hand.
     case elbowGrease = "com.Aulia.Rawrndry.elbowGrease"
-    /// Bank 5,000 gems across the whole save.
+    /// "Rawr Tycoon" — earn 4,000 gems in total from finished orders.
     case rawrTycoon = "com.Aulia.Rawrndry.rawrTycoon"
-    /// Clear every day the game currently has.
+    /// "Full Cycle" — clear every day the laundry has to offer.
     case fullCycle = "com.Aulia.Rawrndry.fullCycle"
 
     /// How much progress counts as 100%. One-shot achievements are just a target of 1.
     var target: Double {
         switch self {
         case .firstWash, .flawlessOrder, .threeStarDay, .fullCycle: return 1
-        case .soapSommelier: return 50
-        case .elbowGrease: return 40_000
-        case .rawrTycoon: return 5_000
+        // Calibrated against LevelDesign: one full playthrough is 22 items, ~11 of them for
+        // customers who actually named a fragrance, ~19,800 scrub distance, and 4,400 gems.
+        case .soapSommelier: return 20
+        case .elbowGrease: return 20_000
+        case .rawrTycoon: return 4_000
         }
     }
 }

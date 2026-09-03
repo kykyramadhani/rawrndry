@@ -27,6 +27,12 @@ enum AssetName {
         static let btnSecondary = "btnSecondary"
         static let slider = "slider"
         static let slideBase = "slideBase"
+
+        /// The order slip has its heading drawn into the art, so there is one per language,
+        /// named by the same code `AppLanguage` uses.
+        static func orderNote(language: AppLanguage) -> String {
+            "orderNote_\(language.rawValue)"
+        }
     }
     
     enum Character {
