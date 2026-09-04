@@ -702,7 +702,9 @@ class DryingScene: SKScene {
         }
         guard !fallingIndices.isEmpty else { return }
 
+        GameState.shared.clothesFlownCount += fallingIndices.count //DISCOUNT for the reward
         showStatus(Loc.t(.dryingTooHardFell))
+        
         run(.sequence([.wait(forDuration: 1.0), .run { [weak self] in self?.hideStatus() }]))
         
         // Memicu goyangan layar (camera shake)
