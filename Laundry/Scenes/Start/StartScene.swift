@@ -144,12 +144,13 @@ class StartScene: SKScene {
         }
     }
 
-    /// Day 1's first customer is always preceded by the raptor's onboarding intro; every
-    /// later day (or a resumed Day 1 after it's already begun) skips straight to the front desk.
+    /// The raptor's intro plays once per save, not once per Day 1 — gating it on the day
+    /// meant it replayed every launch, since nothing was persisting the day in the first place.
     private func goToGameScene() {
-        let nextScene: SKScene = GameState.shared.currentDay == 1
-            ? OnboardingScene(size: self.size)
-            : CustomerScene(size: self.size)
+        let hasSeenIntro = UserDefaults.standard.bool(forKey: TutorialFlag.onboarding.rawValue)
+        let nextScene: SKScene = hasSeenIntro
+            ? CustomerScene(size: self.size)
+            : OnboardingScene(size: self.size)
         nextScene.scaleMode = .aspectFit
 
         let transition = SKTransition.fade(withDuration: 1.0)
