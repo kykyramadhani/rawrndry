@@ -144,6 +144,9 @@ final class GameState {
     /// Times the player reached for the wrong fragrance on this order — deducted from the
     /// handoff payout, and what keeps every order from silently scoring three stars.
     var wrongSoapCount: Int = 0
+    
+    //Times the player blows too hard and the clothes fell
+    var clothesFlownCount: Int = 0
 
     /// Whether the Folding station's leaf-wrap package has been tied off for this order.
     var isPackaged: Bool = false
@@ -158,6 +161,36 @@ final class GameState {
     var currentCustomerImage: String = AssetName.Character.customer1
     var currentOrderReward: Int = 0
 
+    // MARK:  Daily Cumulative Stats (for the end of the day)
+        var dailyClothesFinishedCount: Int = 0
+        var dailyBaseIncome: Int = 0
+        var dailyWrongSoapCount: Int = 0
+        var dailyClothesFlownCount: Int = 0
+        var dailyPenaltyPoints: Int = 0
+
+        // Calculated net profit earned today (Base income minus total penalties)
+        var dailyNetEarned: Int {
+            return max(0, dailyBaseIncome - dailyPenaltyPoints)
+    }
+
+    /// Extra gems the shop's multiplier adds on top of the day's net. Deliberately kept out
+    /// of `dailyNetEarned` so the summary's base-minus-penalties breakdown still adds up, and
+    /// so `starCount()` still rates how well the day was *played* rather than what was bought.
+    var dailyMultiplierBonus: Int { dailyNetEarned * (gemMultiplier - 1) }
+
+    /// What actually reaches the purse at the end of the day — the net plus any boost.
+    var dailyTotalEarned: Int { dailyNetEarned + dailyMultiplierBonus }
+    
+    //MARK: Calculated costs of losses
+    // Daily loss of wrong soap
+    var dailyWrongSoapLoss: Int {
+        return dailyWrongSoapCount * LevelDesign.penaltyWrongSoap
+    }
+
+    // Daily loss of clothes that fell
+    var dailyClothesFlownLoss: Int {
+        return dailyClothesFlownCount * LevelDesign.penaltyClothesFlown
+    }
     private init() {}
 
     /// Folding and Handoff treat the order as one bundle rather than item-by-item, so the
@@ -216,21 +249,35 @@ final class GameState {
     /// instead of `resumingCustomer()` mistaking the completed order for one still in progress.
     func completeCurrentOrder() {
         wrongSoapCount = 0
+        clothesFlownCount = 0
         itemProgress = []
         currentOrderItems = []
         isPackaged = false
         orderGeneratedDay = 0
+    }
+    
+    // MARK:  Transfer Daily Earnings to Global Score
+    // Deposits total net earnings of the day into player's global balance (`score`)
+    func commitDailyEarnings() {
+        score += dailyTotalEarned
+    }
+    
+    // MARK: Reset Daily Cumulative Stats
+    // Resets all accumulated stats for the day (Call when starting a new day)
+    func resetDailyStats() {
+        dailyClothesFinishedCount = 0
+        dailyBaseIncome = 0
+        dailyWrongSoapCount = 0
+        dailyClothesFlownCount = 0
+        dailyPenaltyPoints = 0
     }
 
     /// Wipes the current day's in-progress order and re-queues its customers from the start —
     /// used by the home-button "are you sure you want to go back?" confirm. Leaves `currentDay`
     /// and any already-banked `score` untouched, since only *this* day is starting over.
     func restartCurrentDay() {
-        wrongSoapCount = 0
-        itemProgress = []
-        currentOrderItems = []
-        isPackaged = false
-        orderGeneratedDay = 0
+        resetDailyStats() // Resets daily accumulated stats on restart
+        completeCurrentOrder() // reuse code
         coinsEarned = 0
         CustomerManager.shared.generateCustomers(forDay: currentDay)
     }
@@ -244,11 +291,8 @@ final class GameState {
         clothesCount = 1
         clothesTypes = []
         orderType = .washOnly
-        wrongSoapCount = 0
-        itemProgress = []
-        currentOrderItems = []
-        isPackaged = false
-        orderGeneratedDay = 0
+        resetDailyStats() // Resets daily stats on full game reset
+        completeCurrentOrder() // reuse code
         currentCustomerImage = AssetName.Character.customer1
         currentOrderReward = 0
     }
