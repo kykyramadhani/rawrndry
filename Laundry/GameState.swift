@@ -63,15 +63,60 @@ final class GameState {
 
     static let shared = GameState()
 
-    var currentDay: Int = 1
+    /// What survives closing the app. Everything else in here is either mid-day state that
+    /// can't meaningfully resume (the shift clock is wall-clock based, so a day picked up
+    /// hours later would already be past closing) or derived from these.
+    private enum SaveKey {
+        static let currentDay = "save.currentDay"
+        static let score = "save.score"
+        static let activeBoosts = "save.activeBoosts"
+        static let extraShiftDuration = "save.extraShiftDuration"
+        static let gemMultiplier = "save.gemMultiplier"
+    }
+
+    private static let defaults = UserDefaults.standard
+
+    var currentDay: Int = 1 {
+        didSet { Self.defaults.set(currentDay, forKey: SaveKey.currentDay) }
+    }
 
     /// Wall-clock time this day's shift began — drives the front-of-house 8AM–6PM clock.
     /// Set once per day by `CustomerManager.generateCustomers(forDay:)`; nil before the
     /// first day starts.
     var dayStartTime: Date?
 
-    /// How long, in real seconds, a full 8AM–6PM shift takes to play out.
-    static let dayShiftRealDuration: TimeInterval = 3 * 60 + 30
+    /// How long, in real seconds, a full 8AM–6PM shift takes to play out before any shop
+    /// boost. The clock always runs 8AM to 6PM — buying time makes those hours pass more
+    /// slowly in real terms, which is what lets more customers through the door.
+    static let baseDayShiftRealDuration: TimeInterval = 3 * 60 + 30
+
+    /// Real seconds added to today's shift by the shop's "add more time" boost.
+    /// Boosts persist because they were paid for with gems — quitting after buying one and
+    /// before playing the day must not quietly swallow the purchase.
+    var extraShiftDuration: TimeInterval = 0 {
+        didSet { Self.defaults.set(extraShiftDuration, forKey: SaveKey.extraShiftDuration) }
+    }
+
+    /// What every payout is multiplied by today — 2 while the shop's gem multiplier is active.
+    var gemMultiplier: Int = 1 {
+        didSet { Self.defaults.set(gemMultiplier, forKey: SaveKey.gemMultiplier) }
+    }
+
+    /// Which shop items are active for today, so the shop can show them as bought and refuse
+    /// to sell the same boost twice.
+    var activeBoosts: Set<String> = [] {
+        didSet { Self.defaults.set(Array(activeBoosts), forKey: SaveKey.activeBoosts) }
+    }
+
+    var dayShiftRealDuration: TimeInterval { Self.baseDayShiftRealDuration + extraShiftDuration }
+
+    /// Drops the boosts bought for the day that just ended. Called when the day rolls over,
+    /// so a boost never carries into a day it wasn't paid for.
+    func clearDailyBoosts() {
+        extraShiftDuration = 0
+        gemMultiplier = 1
+        activeBoosts = []
+    }
 
     private static let shiftOpenMinutes = 8 * 60   // 8:00 AM
     private static let shiftCloseMinutes = 18 * 60 // 6:00 PM
@@ -80,8 +125,8 @@ final class GameState {
     /// time since `dayStartTime` and clamped to closing time.
     var currentShiftMinutes: Int {
         guard let dayStartTime else { return Self.shiftOpenMinutes }
-        let elapsed = min(max(Date().timeIntervalSince(dayStartTime), 0), Self.dayShiftRealDuration)
-        let fraction = elapsed / Self.dayShiftRealDuration
+        let elapsed = min(max(Date().timeIntervalSince(dayStartTime), 0), dayShiftRealDuration)
+        let fraction = elapsed / dayShiftRealDuration
         let totalShiftMinutes = Self.shiftCloseMinutes - Self.shiftOpenMinutes
         return Self.shiftOpenMinutes + Int(fraction * Double(totalShiftMinutes))
     }
@@ -104,7 +149,9 @@ final class GameState {
         return String(format: "%d:%02d %@", hour12, minute, isPM ? "PM" : "AM")
     }
 
-    var score: Int = 0
+    var score: Int = 0 {
+        didSet { Self.defaults.set(score, forKey: SaveKey.score) }
+    }
     var coinsEarned: Int = 0
     var orderType: OrderType = .washOnly
     var clothesCount: Int = 1
@@ -150,6 +197,14 @@ final class GameState {
         var dailyNetEarned: Int {
             return max(0, dailyBaseIncome - dailyPenaltyPoints)
     }
+
+    /// Extra gems the shop's multiplier adds on top of the day's net. Deliberately kept out
+    /// of `dailyNetEarned` so the summary's base-minus-penalties breakdown still adds up, and
+    /// so `starCount()` still rates how well the day was *played* rather than what was bought.
+    var dailyMultiplierBonus: Int { dailyNetEarned * (gemMultiplier - 1) }
+
+    /// What actually reaches the purse at the end of the day — the net plus any boost.
+    var dailyTotalEarned: Int { dailyNetEarned + dailyMultiplierBonus }
     
     //MARK: Calculated costs of losses
     // Daily loss of wrong soap
@@ -161,7 +216,17 @@ final class GameState {
     var dailyClothesFlownLoss: Int {
         return dailyClothesFlownCount * LevelDesign.penaltyClothesFlown
     }
-    private init() {}
+    /// Reads back the last session. Property observers don't fire during initialisation, so
+    /// loading here can't write the same values straight back out again.
+    private init() {
+        let defaults = Self.defaults
+        // A fresh install has no key at all, which reads back as 0 — day 1 is the floor.
+        currentDay = max(1, defaults.integer(forKey: SaveKey.currentDay))
+        score = defaults.integer(forKey: SaveKey.score)
+        extraShiftDuration = defaults.double(forKey: SaveKey.extraShiftDuration)
+        gemMultiplier = max(1, defaults.integer(forKey: SaveKey.gemMultiplier))
+        activeBoosts = Set(defaults.stringArray(forKey: SaveKey.activeBoosts) ?? [])
+    }
 
     /// Folding and Handoff treat the order as one bundle rather than item-by-item, so the
     /// first item's pattern (already carried through from washing/drying via `dryingVariant`)
@@ -229,7 +294,7 @@ final class GameState {
     // MARK:  Transfer Daily Earnings to Global Score
     // Deposits total net earnings of the day into player's global balance (`score`)
     func commitDailyEarnings() {
-        score += dailyNetEarned
+        score += dailyTotalEarned
     }
     
     // MARK: Reset Daily Cumulative Stats
@@ -255,6 +320,7 @@ final class GameState {
     func resetAll() {
         currentDay = 1
         dayStartTime = nil
+        clearDailyBoosts()
         score = 0
         coinsEarned = 0
         clothesCount = 1
@@ -264,5 +330,8 @@ final class GameState {
         completeCurrentOrder() // reuse code
         currentCustomerImage = AssetName.Character.customer1
         currentOrderReward = 0
+
+        // A brand-new game replays the raptor's intro, same as a first install would.
+        UserDefaults.standard.set(false, forKey: TutorialFlag.onboarding.rawValue)
     }
 }

@@ -10,55 +10,24 @@
 
 import SpriteKit
 
-private let paperCream = UIColor(red: 255.0/255.0, green: 247.0/255.0, blue: 234.0/255.0, alpha: 1.0)
-private let inkBrown = UIColor(red: 143.0/255.0, green: 43.0/255.0, blue: 18.0/255.0, alpha: 1.0)
-private let scribbleGrey = UIColor(red: 143.0/255.0, green: 43.0/255.0, blue: 18.0/255.0, alpha: 0.35)
-
 extension SKScene {
 
     // MARK: - The slip
 
-    /// Hangs a torn-bottom paper slip down from `topEdgeAnchor` (put that on the scene's top
-    /// edge — the slip is drawn entirely below it, with a sliver above so it reads as tucked
-    /// behind the edge rather than floating).
+    /// Hangs the order slip from `topEdgeAnchor` — put that on the scene's top edge and the
+    /// art hangs entirely below it. Anchored at its own top edge so the idle sway pivots from
+    /// where it's pinned rather than swinging about its middle.
     @discardableResult
-    func addOrderNote(topEdgeAnchor: CGPoint) -> SKNode {
+    func addOrderNote(topEdgeAnchor: CGPoint) -> SKSpriteNode {
         let width: CGFloat = 48
-        let height: CGFloat = 62
 
-        let note = SKNode()
+        let note = SKSpriteNode(imageNamed: AssetName.UI.orderNote(language: SettingsManager.shared.language))
         note.name = "orderNote"
+        note.anchorPoint = CGPoint(x: 0.5, y: 1.0)
+        note.size = CGSize(width: width, height: width * note.texture!.size().height / note.texture!.size().width)
         note.position = topEdgeAnchor
         note.zPosition = 100
         addChild(note)
-
-        let paper = SKShapeNode(path: tornPaperPath(width: width, height: height))
-        paper.fillColor = paperCream
-        paper.strokeColor = UIColor(red: 74.0/255.0, green: 26.0/255.0, blue: 26.0/255.0, alpha: 1.0)
-        paper.lineWidth = 3
-        paper.lineJoin = .round
-        // Not named — taps hit-test to the slip's own children, which fall back to the
-        // parent's name via `tappedNodeName(at:)`.
-        note.addChild(paper)
-
-        let title = SKLabelNode(fontNamed: AssetName.Font.comica)
-        title.text = Loc.t(.orderNoteTitle)
-        title.fontSize = 11
-        title.fontColor = inkBrown
-        title.verticalAlignmentMode = .center
-        title.position = CGPoint(x: 0, y: -16)
-        title.zPosition = 1
-        note.addChild(title)
-
-        // Scribble rows standing in for handwriting — the real order is in the popup.
-        for (index, lineWidth) in [width * 0.64, width * 0.48].enumerated() {
-            let line = SKShapeNode(rectOf: CGSize(width: lineWidth, height: 2.5), cornerRadius: 1.25)
-            line.fillColor = scribbleGrey
-            line.strokeColor = .clear
-            line.position = CGPoint(x: 0, y: -30 - CGFloat(index) * 10)
-            line.zPosition = 1
-            note.addChild(line)
-        }
 
         // A slow sway so the slip reads as something you can poke, not part of the background.
         let swayRight = SKAction.rotate(toAngle: 0.025, duration: 1.4)
@@ -68,34 +37,6 @@ extension SKScene {
         note.run(.repeatForever(.sequence([swayRight, swayLeft])))
 
         return note
-    }
-
-    /// A rectangle whose bottom edge is torn into three humps, drawn hanging *down* from the
-    /// origin (with a small sliver above it, hidden behind the screen edge).
-    private func tornPaperPath(width: CGFloat, height: CGFloat) -> CGPath {
-        let path = CGMutablePath()
-        let halfWidth = width / 2
-        let overhang: CGFloat = 8         // tucked behind the top edge
-        let tearHeight: CGFloat = 5
-
-        path.move(to: CGPoint(x: -halfWidth, y: overhang))
-        path.addLine(to: CGPoint(x: halfWidth, y: overhang))
-        path.addLine(to: CGPoint(x: halfWidth, y: -height + tearHeight))
-
-        let humps = 3
-        let humpWidth = width / CGFloat(humps)
-        for index in 0..<humps {
-            let endX = halfWidth - humpWidth * CGFloat(index + 1)
-            let controlX = endX + humpWidth / 2
-            let dipsDown = index % 2 == 0
-            path.addQuadCurve(
-                to: CGPoint(x: endX, y: -height + tearHeight),
-                control: CGPoint(x: controlX, y: -height + (dipsDown ? -tearHeight : tearHeight * 2.4))
-            )
-        }
-
-        path.closeSubpath()
-        return path
     }
 
     /// Call alongside handleTipPopupTap/handleHomeButtonTap from touchesBegan.

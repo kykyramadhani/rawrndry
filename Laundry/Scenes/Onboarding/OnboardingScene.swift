@@ -242,6 +242,7 @@ class OnboardingScene: SKScene {
         if stepIndex < steps.count - 1 {
             showStep(stepIndex + 1)
         } else {
+            UserDefaults.standard.set(true, forKey: TutorialFlag.onboarding.rawValue)
             goTo(CustomerScene(size: self.size))
         }
     }

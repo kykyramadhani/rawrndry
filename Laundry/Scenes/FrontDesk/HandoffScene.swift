@@ -318,8 +318,12 @@ class HandoffScene: SKScene {
         playSound("complete")
 
         let center = sceneCenter
-        let panelSize = CGSize(width: 348, height: 248)
-        let innerContentSize = CGSize(width: 270, height: 157)
+        // The gem-multiplier bonus adds a row between the mistakes and the total, so both
+        // the panel and its card grow by exactly that row — otherwise the total income line
+        // falls off the bottom of the card.
+        let bonusRowHeight: CGFloat = GameState.shared.gemMultiplier > 1 ? 16 : 0
+        let panelSize = CGSize(width: 348, height: 248 + bonusRowHeight)
+        let innerContentSize = CGSize(width: 270, height: 157 + bonusRowHeight)
 
         let overlay = SKNode()
         overlay.name = "rewardPopupOverlay"
@@ -458,6 +462,34 @@ class HandoffScene: SKScene {
             cursorY -= (rowHeight * 0.8 + rowSpacing * 0.5)
         }
 
+        // The shop's gem multiplier earns its own row — a gain among the losses, so the
+        // total below still visibly adds up from the rows above it.
+        if GameState.shared.gemMultiplier > 1 {
+            let bonusColor = UIColor(red: 76.0/255.0, green: 140.0/255.0, blue: 74.0/255.0, alpha: 1.0)
+
+            let countLabel = createLabel(text: "\(GameState.shared.gemMultiplier)X", size: 12, color: bonusColor)
+            countLabel.position = CGPoint(x: leftX, y: cursorY)
+            countLabel.zPosition = 1
+            innerContentBg.addChild(countLabel)
+
+            let nameLabel = SKLabelNode(fontNamed: roundedSystemFontName(size: 10))
+            nameLabel.text = Loc.t(.shopItemGemMultiplierName)
+            nameLabel.fontSize = 10
+            nameLabel.fontColor = plainTextBrown
+            nameLabel.horizontalAlignmentMode = .left
+            nameLabel.verticalAlignmentMode = .center
+            nameLabel.position = CGPoint(x: leftX + countLabel.frame.width + 4, y: cursorY)
+            nameLabel.zPosition = 1
+            innerContentBg.addChild(nameLabel)
+
+            let bonusAmount = createLabel(text: "+\(GameState.shared.dailyMultiplierBonus)", size: 14, align: .right)
+            bonusAmount.position = CGPoint(x: rightX, y: cursorY)
+            bonusAmount.zPosition = 1
+            innerContentBg.addChild(bonusAmount)
+
+            cursorY -= (rowHeight * 0.8 + rowSpacing * 0.5)
+        }
+
         cursorY -= (dividerGap - rowSpacing * 0.5)
         addDivider(to: innerContentBg, yPos: cursorY, width: innerContentSize.width - sidePadding * 2)
 
@@ -473,7 +505,7 @@ class HandoffScene: SKScene {
         gemIcon.size = CGSize(width: 20, height: 20)
         gemIcon.zPosition = 1
 
-        let totalAmountLabel = createLabel(text: formattedCoins(GameState.shared.dailyNetEarned), size: 20, align: .right)
+        let totalAmountLabel = createLabel(text: formattedCoins(GameState.shared.dailyTotalEarned), size: 20, align: .right)
         totalAmountLabel.position = CGPoint(x: rightX, y: cursorY)
         totalAmountLabel.zPosition = 1
 
@@ -540,6 +572,7 @@ class HandoffScene: SKScene {
                 if self.starCount() == 3 { GameCenterManager.shared.unlock(.threeStarDay) }
 
                 GameState.shared.currentDay += 1
+                GameState.shared.clearDailyBoosts()
                 if GameState.shared.currentDay > LevelDesign.days.count {
                     GameCenterManager.shared.unlock(.fullCycle)
                 }
