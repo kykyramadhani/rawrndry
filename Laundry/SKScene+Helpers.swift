@@ -106,11 +106,13 @@ extension SKScene {
 
     private func addHUDContent(to hud: SKSpriteNode, icon: String, text: String) {
         let content = SKNode()
+        content.name = "hudContent"
         let iconNode = SKSpriteNode(imageNamed: icon)
         iconNode.position = .zero
 
         let label = SKLabelNode(fontNamed: AssetName.Font.comica)
         label.text = text
+        label.name = "hudAmountLabel"
         label.fontSize = 24
         label.fontColor = UIColor(red: 255.0/255.0, green: 247.0/255.0, blue: 234.0/255.0, alpha: 1.0)
         label.verticalAlignmentMode = .center
