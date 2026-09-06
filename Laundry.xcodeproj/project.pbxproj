@@ -150,6 +150,7 @@
 				DEVELOPMENT_TEAM = JLQK39AS23;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Laundry/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Rawrndry;
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Laundry Day uses the microphone so you can blow on clothes to dry them.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
@@ -191,6 +192,7 @@
 				DEVELOPMENT_TEAM = JLQK39AS23;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Laundry/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Rawrndry;
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Laundry Day uses the microphone so you can blow on clothes to dry them.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
