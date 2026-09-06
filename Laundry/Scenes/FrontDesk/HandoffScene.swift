@@ -276,8 +276,6 @@ class HandoffScene: SKScene {
     }
 
     private func goToNextCustomer() {
-        GameState.shared.score += GameState.shared.coinsEarned
-        GameState.shared.coinsEarned = 0
         GameState.shared.completeCurrentOrder()
         goTo(CustomerScene(size: size))
     }
@@ -557,10 +555,13 @@ class HandoffScene: SKScene {
         }
     }
     
+    
     private func handleRewardPopupTap(at location: CGPoint) -> Bool {
         guard let overlay = childNode(withName: "rewardPopupOverlay") else { return false }
         if tappedNodeName(at: location) == "rewardOk" {
             let okButton = overlay.childNode(withName: "//rewardOk")
+
+            self.isUserInteractionEnabled = false
             runButtonTapAnimation(on: okButton ?? overlay) { [weak self] in
                 guard let self else { return }
 
@@ -569,17 +570,47 @@ class HandoffScene: SKScene {
                 // completeHandoff), so tapping OK here always advances to the next day —
                 // StartScene continues into it (or shows "more levels coming soon" once the
                 // design table runs out).
-                if self.starCount() == 3 { GameCenterManager.shared.unlock(.threeStarDay) }
+                
+                self.animateCurrencyHudUpdate {
+                    if self.starCount() == 3 {
+                        GameCenterManager.shared.unlock(.threeStarDay)
+                    }
 
-                GameState.shared.currentDay += 1
-                GameState.shared.clearDailyBoosts()
-                if GameState.shared.currentDay > LevelDesign.days.count {
-                    GameCenterManager.shared.unlock(.fullCycle)
+                    GameState.shared.currentDay += 1
+                    GameState.shared.clearDailyBoosts()
+                    GameState.shared.resetDailyStats()
+
+                    if GameState.shared.currentDay > LevelDesign.days.count {
+                        GameCenterManager.shared.unlock(.fullCycle)
+                    }
+
+                    self.goTo(StartScene(size: self.size))
                 }
-                self.goTo(StartScene(size: self.size))
             }
         }
         return true
+    }
+    
+    // animating the change in the money amont
+    private func animateCurrencyHudUpdate(completion: @escaping () -> Void) {
+        guard let currencyHud = self.currencyHud else {
+            completion()
+            return
+        }
+
+        let scaleUp = SKAction.scale(to: 1.2, duration: 0.2)
+        scaleUp.timingMode = .easeOut
+        let updateLabel = SKAction.run { [weak self] in
+            guard let self else { return }
+            if let labelNode = currencyHud.childNode(withName: "//hudAmountLabel") as? SKLabelNode {
+                labelNode.text = self.formattedCoins(GameState.shared.score)
+            }
+        }
+        let wait = SKAction.wait(forDuration: 0.3)
+        let scaleDown = SKAction.scale(to: 1.0, duration: 0.15)
+        scaleDown.timingMode = .easeIn
+
+        currencyHud.run(.sequence([scaleUp, updateLabel, wait, scaleDown, .run { completion() }]))
     }
 
     /// Percentage of the maximum possible payout this day could have earned, minus tears.
