@@ -580,10 +580,6 @@ class HandoffScene: SKScene {
                     GameState.shared.clearDailyBoosts()
                     GameState.shared.resetDailyStats()
 
-                    if GameState.shared.currentDay > LevelDesign.days.count {
-                        GameCenterManager.shared.unlock(.fullCycle)
-                    }
-
                     self.goTo(StartScene(size: self.size))
                 }
             }
