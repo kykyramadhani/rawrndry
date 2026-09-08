@@ -22,7 +22,7 @@ struct DayLevelConfig {
 
 enum LevelDesign {
     static let piecePrice: Int = 200
-    static let penaltyWrongSoap: Int = 50
+    static let penaltyWrongSoap: Int = 30
     static let penaltyClothesFlown: Int = 25 //NOTE: change if needed to dynamic calc
 
     // days authored by us
