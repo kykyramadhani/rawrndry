@@ -22,6 +22,8 @@ enum LocKey: String {
     case yes
     case cancel
     case reward
+    case startOver
+    case newGameConfirmMessage
     case homeConfirmMessage
     case next
 
@@ -142,6 +144,16 @@ enum Loc {
         .yes: [.en: "YES", .id: "YA", .es: "SÍ"],
         .cancel: [.en: "CANCEL", .id: "BATAL", .es: "CANCELAR"],
         .reward: [.en: "REWARD", .id: "HADIAH", .es: "RECOMPENSA"],
+        .startOver: [
+            .en: "START OVER",
+            .id: "MULAI ULANG",
+            .es: "REINICIAR"
+        ],
+        .newGameConfirmMessage: [
+            .en: "Start over from the beginning? Your current laundry progress will be lost",
+            .id: "Mulai dari awal lagi? Progres cucian kamu saat ini akan hilang",
+            .es: "¿Empezar de nuevo desde el principio? Se perderá tu progreso actual de lavandería"
+        ],
         .homeConfirmMessage: [
             .en: "Are you sure you want to go back?",
             .id: "Apakah kamu yakin ingin kembali?",
@@ -453,10 +465,9 @@ enum Loc {
         ],
         .startNewGame: [
             .en: "START NEW GAME",
-            .id: "MULAI PERMAINAN BARU",
-            .es: "EMPEZAR NUEVO JUEGO"
+            .id: "PERMAINAN BARU",
+            .es: "NUEVO JUEGO"
         ],
-
         .dryingAllDry: [.en: "All dry!", .id: "Semua sudah kering!", .es: "¡Todo seco!"],
         .dryingTooHardFell: [
             .en: "Too hard! It fell!",

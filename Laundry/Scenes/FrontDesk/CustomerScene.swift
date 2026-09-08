@@ -35,13 +35,6 @@ class CustomerScene: SKScene {
     override func didMove(to view: SKView) {
         self.anchorPoint = CGPoint(x: 0.5, y: 0.5)
 
-        // There's no designed content past the last day yet — bounce back to StartScene,
-        // which shows the "more levels coming soon" state instead of a broken empty order.
-        guard LevelDesign.config(forDay: GameState.shared.currentDay) != nil else {
-            goTo(StartScene(size: self.size))
-            return
-        }
-
         if let resumed = Self.resumingCustomer() {
             // An order is already in progress for today (the player navigated back/forward
             // via the station arrows before finishing it) — keep serving the same customer

@@ -29,13 +29,13 @@ enum Achievement: String, CaseIterable {
     case elbowGrease = "com.Aulia.Rawrndry.elbowGrease"
     /// "Rawr Tycoon" — earn 4,000 gems in total from finished orders.
     case rawrTycoon = "com.Aulia.Rawrndry.rawrTycoon"
-    /// "Full Cycle" — clear every day the laundry has to offer.
-    case fullCycle = "com.Aulia.Rawrndry.fullCycle"
+//    /// "Full Cycle" — clear every day the laundry has to offer.
+//    case fullCycle = "com.Aulia.Rawrndry.fullCycle"
 
     /// How much progress counts as 100%. One-shot achievements are just a target of 1.
     var target: Double {
         switch self {
-        case .firstWash, .flawlessOrder, .threeStarDay, .fullCycle: return 1
+        case .firstWash, .flawlessOrder, .threeStarDay: return 1 //deleted fullCycle since now we have infinite design
         // Calibrated against LevelDesign: one full playthrough is 22 items, ~11 of them for
         // customers who actually named a fragrance, ~19,800 scrub distance, and 4,400 gems.
         case .soapSommelier: return 20

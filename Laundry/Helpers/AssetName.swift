@@ -27,6 +27,9 @@ enum AssetName {
         static let iconStoneOff = "btn-stone-off"
         static let btnSettings = "btnSettings"
         static let btnSecondary = "btnSecondary"
+        static let btnStartNew = "btnStartNew"
+        static let btnStartOver = "btnStartOver"
+        static let btnCancelGray = "btnCancelGray"
         static let slider = "slider"
         static let slideBase = "slideBase"
 

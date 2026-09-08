@@ -20,7 +20,7 @@ class CustomerManager {
     func generateCustomers(forDay day: Int) {
         remainingCustomersForToday.removeAll()
 
-        guard let config = LevelDesign.config(forDay: day) else { return }
+        let config = LevelDesign.config(forDay: day)
 
         GameState.shared.dayStartTime = Date()
 
