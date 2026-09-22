@@ -12,7 +12,9 @@ import SpriteKit
 
 final class IntroVideoScene: SKScene {
 
+
     private var player: AVPlayer?
+    private var videoNode: SKVideoNode?
     private var endObserver: NSObjectProtocol?
 
     /// Guards against finishing twice, which is easy to do here: the skip button and the
@@ -49,6 +51,7 @@ final class IntroVideoScene: SKScene {
         videoNode.position = .zero
         videoNode.zPosition = -1
         addChild(videoNode)
+        self.videoNode = videoNode
 
         endObserver = NotificationCenter.default.addObserver(
             forName: .AVPlayerItemDidPlayToEndTime,
@@ -99,8 +102,7 @@ final class IntroVideoScene: SKScene {
         guard !hasFinished else { return }
         hasFinished = true
 
-        player?.pause()
-        player = nil
+        stopPlayback()
 
         if let endObserver {
             NotificationCenter.default.removeObserver(endObserver)
@@ -112,6 +114,26 @@ final class IntroVideoScene: SKScene {
         let startScene = StartScene(size: size)
         startScene.scaleMode = scaleMode
         view?.presentScene(startScene, transition: .fade(with: .black, duration: 0.6))
+    }
+
+    /// Pausing the AVPlayer alone does not hold: SKVideoNode keeps driving the player's rate
+    /// for as long as the node is in a scene, and the outgoing scene outlives the transition,
+    /// so the film carried on playing behind the start screen. The node has to be told to
+    /// pause and then taken out of the scene, and the item dropped, before the player stays
+    /// down.
+    private func stopPlayback() {
+        videoNode?.pause()
+        videoNode?.removeFromParent()
+        videoNode = nil
+
+        player?.pause()
+        player?.replaceCurrentItem(with: nil)
+        player = nil
+    }
+
+    /// Safety net for any exit that doesn't go through `finish()`.
+    override func willMove(from view: SKView) {
+        stopPlayback()
     }
 
     deinit {
