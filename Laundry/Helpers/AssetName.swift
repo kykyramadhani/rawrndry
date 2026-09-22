@@ -75,8 +75,7 @@ enum AssetName {
 
         /// Burst art played once when a soap is applied — petals for Rose, foam blobs for Soap Fruit.
         static let washingPetals = "washingPetals"
-        static let washingFoam1 = "washingFoam1"
-        static let washingFoam2 = "washingFoam2"
+        static let washingFoam = "washingFoam"
 
         
         // Washing - Dynamic

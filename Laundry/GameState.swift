@@ -331,7 +331,9 @@ final class GameState {
         currentCustomerImage = AssetName.Character.customer1
         currentOrderReward = 0
 
-        // A brand-new game replays the raptor's intro, same as a first install would.
+        // A brand-new game replays the backstory and the raptor's intro, same as a first
+        // install would.
+        UserDefaults.standard.set(false, forKey: TutorialFlag.introVideo.rawValue)
         UserDefaults.standard.set(false, forKey: TutorialFlag.onboarding.rawValue)
     }
 }

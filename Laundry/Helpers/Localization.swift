@@ -88,6 +88,7 @@ enum LocKey: String {
     case orderNoteSoap
     case orderNoteAnySoap
     case orderNoteClothes
+    case skip
 
     // Shop
     case shopTitle
@@ -396,6 +397,7 @@ enum Loc {
         .orderNoteSoap: [.en: "SOAP", .id: "SABUN", .es: "JABÓN"],
         .orderNoteAnySoap: [.en: "ANY", .id: "BEBAS", .es: "CUALQUIERA"],
         .orderNoteClothes: [.en: "CLOTHES", .id: "BAJU", .es: "ROPA"],
+        .skip: [.en: "SKIP", .id: "LEWATI", .es: "OMITIR"],
 
         .shopTitle: [.en: "SHOP", .id: "TOKO", .es: "TIENDA"],
         .shopSelectPrompt: [
