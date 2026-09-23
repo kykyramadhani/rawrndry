@@ -37,7 +37,7 @@ enum SoapFragrance: String, CaseIterable {
 
     /// Rendered size of that burst, in points.
     var spraySize: CGSize {
-        self == .rose ? CGSize(width: 123, height: 123) : CGSize(width: 77, height: 77)
+        self == .rose ? CGSize(width: 175, height: 175) : CGSize(width: 120, height: 120)
     }
 }
 

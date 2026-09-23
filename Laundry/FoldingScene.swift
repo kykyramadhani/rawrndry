@@ -32,7 +32,6 @@ class FoldingScene: SKScene {
     private var clothesShadow: SKSpriteNode!
     private var clothesDragIcon: SKSpriteNode!
     private var rope: SKSpriteNode!
-    private var knottedRope: SKSpriteNode!
     private var basket: SKSpriteNode!
     private var arrows: [FoldArrow: SKSpriteNode] = [:]
 
@@ -117,7 +116,6 @@ class FoldingScene: SKScene {
         addLeafLayers()
         addArrows()
         addRope()
-        addKnottedRope()
 
         helpButton = makeButton(
             imageNamed: AssetName.UI.btnInstruction,
@@ -287,15 +285,6 @@ class FoldingScene: SKScene {
         rope.position = ropeStartPosition
         rope.zPosition = 5
         addChild(rope)
-    }
-
-    private func addKnottedRope() {
-        knottedRope = SKSpriteNode(imageNamed: "packagingKnottedRope")
-        knottedRope.size = ropeSize
-        knottedRope.position = packageCenter
-        knottedRope.zPosition = 5
-        knottedRope.isHidden = true
-        addChild(knottedRope)
     }
 
     // MARK: - State machine
@@ -576,10 +565,6 @@ class FoldingScene: SKScene {
         // Sealed now — no reason to still show the folded clothes underneath the closed wrap.
         clothesPile.isHidden = true
         clothesShadow.isHidden = true
-
-        knottedRope.isHidden = false
-        knottedRope.setScale(0.5)
-        knottedRope.run(.scale(to: 1.0, duration: 0.25))
 
         showHint(Loc.t(.foldingHintPackaged), on: hintLabel)
 
