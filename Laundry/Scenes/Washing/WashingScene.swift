@@ -105,7 +105,7 @@ class WashingScene: SKScene {
         setupClothesOnSteps()
         setupSoaps()
         setupRightBasket()
-        chevronRight = addStationArrows(current: .washing).right
+        chevronRight = addStationArrows(current: .washing, showLeft: false).right
 
         // STANDARD INSTRUCTION BUTTON
         helpButton = makeButton(

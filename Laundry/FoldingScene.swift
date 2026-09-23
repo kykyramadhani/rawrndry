@@ -108,7 +108,7 @@ class FoldingScene: SKScene {
     override func didMove(to view: SKView) {
         addBackground(imageNamed: "packagingBackground")
         addCurrencyHUD(topLeftOrigin: CGPoint(x: size.width * 0.05, y: size.height * 0.90), day: GameState.shared.currentDay, coins: GameState.shared.score)
-        addStationArrows(current: .folding)
+        addStationArrows(current: .folding, showRight: false)
 
         addBasket()
         addClothesLayer()
