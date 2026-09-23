@@ -2,12 +2,23 @@ import SpriteKit
 
 class StartScene: SKScene {
 
+    private var hasSetUp = false
+    
+    private var hasProgressToReset: Bool {
+        GameState.shared.currentDay > 1 || GameState.shared.score > 0
+    }
+    
     override func didMove(to view: SKView) {
+        guard !hasSetUp else { return }
+        hasSetUp = true //quick fix, TODO: check on this later
+        
         self.anchorPoint = CGPoint(x: 0.5, y: 0.5)
 
         setupBackground()
         setupStartButton()
-        setupNewGameButton()
+        if hasProgressToReset {
+            setupNewGameButton()
+        }
         addSettingsButton()
         addShopButton(at: CGPoint(x: -size.width * 0.40, y: size.height * 0.40))
 
